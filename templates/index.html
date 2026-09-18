@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RiskLens | Credit risk score</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>.sanction{margin-top:34px;padding:17px 18px;border:1px solid #d6e0d9;border-radius:12px;background:#f6faf7;display:flex;justify-content:space-between;gap:20px;align-items:center}.sanction span{display:block;color:#5e716b;font:9px 'DM Mono',monospace;letter-spacing:.1em;margin-bottom:7px}.sanction strong{font-size:20px;letter-spacing:-.04em;color:#16785a}.sanction p{margin:0;max-width:210px;color:#5e716b;font-size:11px;line-height:1.5}@media(max-width:600px){.sanction{display:block}.sanction p{margin-top:12px}}</style>
+</head>
+<body>
+  <main class="shell">
+    <section class="intro">
+      <p class="eyebrow">RISKLENS / EDUCATIONAL DEMO</p>
+      <h1>Make a quick financial risk assessment.</h1>
+      <p class="lede">Enter a few financial details to estimate a credit risk score from 0 to 100. Lower is better.</p>
+      <div class="signal-list"><span><i></i> Debt-to-income</span><span><i></i> Loan affordability</span><span><i></i> Repayment behaviour</span></div>
+      <div class="notice">For demonstration only — not a lending decision or a substitute for professional underwriting.</div>
+    </section>
+    <section class="card">
+      <form id="score-form">
+        <div class="form-heading"><h2>Applicant financial profile</h2><button type="button" id="sample">Use sample</button></div>
+        <div class="fields">
+          <label>Monthly income <span>₹ INR</span><input required min="1" step="any" type="number" name="monthly_income" placeholder="60,000"></label>
+          <label>Monthly debt payments <span>₹ INR</span><input required min="0" step="any" type="number" name="monthly_debt_payments" placeholder="12,000"></label>
+          <label>Requested loan amount <span>₹ INR</span><input required min="0" step="any" type="number" name="loan_amount" placeholder="2,00,000"></label>
+          <label>Annual interest rate <span>%</span><input required min="0" max="100" step="0.1" type="number" name="annual_interest_rate" placeholder="9.5"></label>
+          <label>Credit history length <span>years</span><input required min="0" step="0.1" type="number" name="credit_history_years" placeholder="6"></label>
+          <label>Missed payments <span>last 12 months</span><input required min="0" step="1" type="number" name="missed_payments_12m" placeholder="0"></label>
+        </div>
+        <button class="primary" type="submit">Calculate risk score <span>→</span></button>
+        <p class="error" id="error" aria-live="polite"></p>
+      </form>
+      <section class="result hidden" id="result" aria-live="polite">
+        <div class="result-top">
+          <div class="dial" id="dial"><div class="dial-center"><strong id="score">--</strong><span>RISK / 100</span></div></div>
+          <div class="result-copy"><p class="eyebrow">ESTIMATED DEFAULT RISK</p><h3 id="band">Waiting for details</h3><p id="decision">Your result will appear here.</p><span class="live-dot">LIVE ASSESSMENT</span></div>
+        </div>
+        <div class="score-scale"><span>LOW</span><span>MODERATE</span><span>HIGH</span></div>
+        <div class="sanction"><div><span>INDICATIVE SANCTION RANGE</span><strong id="sanction-range">₹ —</strong></div><p>Calculated from monthly disposable income and this demo’s risk band. Not a credit offer.</p></div>
+      </section>
+    </section>
+  </main>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
