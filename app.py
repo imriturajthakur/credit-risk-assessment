@@ -60,7 +60,9 @@ def build_model() -> Pipeline:
     return Pipeline(
         [
             ("scale", StandardScaler()),
-            ("classifier", LogisticRegression(max_iter=500, random_state=42)),
+            # liblinear is deliberately quick for this small, five-feature
+            # educational model and keeps cloud cold starts short.
+            ("classifier", LogisticRegression(solver="liblinear", max_iter=100, random_state=42)),
         ]
     ).fit(samples, labels)
 
