@@ -154,12 +154,15 @@ def api_score():
     # 2. Explainable AI (XAI) Attribution & Waterfall
     xai_result = SUITE.explain_instance(X_input, raw_feature_dict)
 
-    # 3. Indicative Sanction & Advice
+    # 3. Decision Tree Scatter & Node Path
+    tree_path_result = SUITE.evaluate_decision_tree_path(raw_feature_dict)
+
+    # 4. Indicative Sanction & Advice
     sanction_info = compute_sanction_and_guidance(
         income, debt, loan, consensus["risk_score"], consensus["band"], dti, missed
     )
 
-    # 4. Leveled 4-tier Decision Pipeline
+    # 5. Leveled 4-tier Decision Pipeline
     pipeline_levels = SUITE.generate_leveled_decision_pipeline(
         raw_inputs=raw_inputs,
         ratios={"debt_to_income": dti * 100, "loan_to_income": lti},
@@ -181,6 +184,7 @@ def api_score():
             "action_advice": sanction_info["action_advice"],
         },
         "models": multi_model_result["models"],
+        "tree_path": tree_path_result,
         "xai": {
             "baseline_risk": xai_result["baseline_risk"],
             "target_risk": xai_result["target_risk"],

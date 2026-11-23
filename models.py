@@ -358,6 +358,142 @@ class CreditRiskModelSuite:
             "top_mitigant": top_mitigant,
         }
 
+    def evaluate_decision_tree_path(self, raw_values: Dict[str, float]) -> Dict[str, Any]:
+        """Traces the exact decision tree path taken by this applicant through condition nodes."""
+        dti_pct = raw_values.get("debt_to_income", 0.0) * 100.0
+        lti_val = raw_values.get("loan_to_income", 0.0)
+        missed = raw_values.get("missed_payments_12m", 0.0)
+        history = raw_values.get("credit_history_years", 0.0)
+
+        path_nodes = ["root"]
+        path_edges = []
+        evaluations = {
+            "root": {
+                "title": "Root Node: Applicant Profile Ingested",
+                "condition": "Ingest 5 normalized financial metrics",
+                "status": "PASS",
+                "detail": f"DTI: {dti_pct:.1f}%, LTI: {lti_val:.2f}x, Missed: {int(missed)}, History: {history:.1f}y",
+            }
+        }
+
+        # Level 1 Split: Missed payments
+        if missed == 0:
+            path_nodes.append("node_clean")
+            path_edges.append("e_root_clean")
+            evaluations["node_clean"] = {
+                "title": "Branch A: Clean Repayment Track",
+                "condition": "Missed Payments == 0",
+                "status": "TRUE",
+                "detail": f"Applicant has 0 missed payments in 12m. Scatters into Debt-to-Income evaluation.",
+            }
+            # Level 2 Split: DTI
+            if dti_pct <= 36.0:
+                path_nodes.append("node_low_dti")
+                path_edges.append("e_clean_low_dti")
+                evaluations["node_low_dti"] = {
+                    "title": "Sub-Branch A1: Low Debt-to-Income",
+                    "condition": "DTI <= 36.0%",
+                    "status": "TRUE",
+                    "detail": f"Applicant DTI is {dti_pct:.1f}% (<= 36%). Healthy monthly surplus verified.",
+                }
+                # Level 3 Split: LTI
+                if lti_val <= 1.50:
+                    path_nodes.append("leaf_prime")
+                    path_edges.append("e_low_dti_prime")
+                    evaluations["leaf_prime"] = {
+                        "title": "Leaf Verdict: Prime Tier Approval",
+                        "condition": "LTI <= 1.50x",
+                        "status": "APPROVED",
+                        "detail": f"LTI is {lti_val:.2f}x annual income. Top tier credit sanction with preferential rates.",
+                    }
+                else:
+                    path_nodes.append("leaf_standard")
+                    path_edges.append("e_low_dti_std")
+                    evaluations["leaf_standard"] = {
+                        "title": "Leaf Verdict: Standard Tier (High Loan Scale)",
+                        "condition": "LTI > 1.50x",
+                        "status": "APPROVED",
+                        "detail": f"LTI is {lti_val:.2f}x annual income. Manageable risk with standard loan sizing.",
+                    }
+            else:
+                path_nodes.append("node_high_dti")
+                path_edges.append("e_clean_high_dti")
+                evaluations["node_high_dti"] = {
+                    "title": "Sub-Branch A2: Elevated Debt-to-Income",
+                    "condition": "DTI > 36.0%",
+                    "status": "TRUE",
+                    "detail": f"Applicant DTI is {dti_pct:.1f}% (> 36%). Credit tenure depth is evaluated.",
+                }
+                if history >= 5.0:
+                    path_nodes.append("leaf_standard")
+                    path_edges.append("e_high_dti_std")
+                    evaluations["leaf_standard"] = {
+                        "title": "Leaf Verdict: Standard Tier (Tenure Compensated)",
+                        "condition": "History >= 5.0y",
+                        "status": "APPROVED",
+                        "detail": f"Extensive credit history ({history:.1f}y) mitigates elevated DTI burden.",
+                    }
+                else:
+                    path_nodes.append("leaf_strained")
+                    path_edges.append("e_high_dti_strain")
+                    evaluations["leaf_strained"] = {
+                        "title": "Leaf Verdict: Strained / Review Required",
+                        "condition": "History < 5.0y",
+                        "status": "REVIEW",
+                        "detail": f"Elevated DTI ({dti_pct:.1f}%) combined with short history ({history:.1f}y) elevates risk.",
+                    }
+        else:
+            path_nodes.append("node_delinquent")
+            path_edges.append("e_root_delinq")
+            evaluations["node_delinquent"] = {
+                "title": "Branch B: Delinquency Track",
+                "condition": "Missed Payments > 0",
+                "status": "TRUE",
+                "detail": f"Applicant has {int(missed)} missed payments recorded. Delinquency severity evaluated.",
+            }
+            if missed <= 2:
+                path_nodes.append("node_mild_delinq")
+                path_edges.append("e_delinq_mild")
+                evaluations["node_mild_delinq"] = {
+                    "title": "Sub-Branch B1: Isolated Delinquency",
+                    "condition": "Missed Payments <= 2",
+                    "status": "TRUE",
+                    "detail": f"Delinquency count is {int(missed)}. Checking whether DTI affords buffer.",
+                }
+                if dti_pct <= 42.0:
+                    path_nodes.append("leaf_strained")
+                    path_edges.append("e_mild_strain")
+                    evaluations["leaf_strained"] = {
+                        "title": "Leaf Verdict: Conditional Standard Review",
+                        "condition": "DTI <= 42.0%",
+                        "status": "REVIEW",
+                        "detail": f"DTI is {dti_pct:.1f}%. Recoverable profile with stricter covenants or co-borrower.",
+                    }
+                else:
+                    path_nodes.append("leaf_subprime")
+                    path_edges.append("e_mild_subprime")
+                    evaluations["leaf_subprime"] = {
+                        "title": "Leaf Verdict: Subprime Risk Alert",
+                        "condition": "DTI > 42.0%",
+                        "status": "HIGH RISK",
+                        "detail": f"Compound risk: {int(missed)} missed payments and high DTI ({dti_pct:.1f}%).",
+                    }
+            else:
+                path_nodes.append("leaf_subprime")
+                path_edges.append("e_delinq_severe")
+                evaluations["leaf_subprime"] = {
+                    "title": "Leaf Verdict: Severe Default Risk Signal",
+                    "condition": "Missed Payments > 2",
+                    "status": "REJECT / RESTRUCTURE",
+                    "detail": f"Critical risk: {int(missed)} late payments indicate acute default vulnerability.",
+                }
+
+        return {
+            "path_nodes": path_nodes,
+            "path_edges": path_edges,
+            "evaluations": evaluations,
+        }
+
     def generate_leveled_decision_pipeline(
         self,
         raw_inputs: Dict[str, float],

@@ -3,348 +3,408 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>RiskLens — Multi-Model Credit Risk & Explainable AI</title>
+  <title>RiskLens — Minimalist Credit Risk & Decision Tree XAI</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <!-- Top Navigation Bar -->
-  <header class="top-nav">
-    <div class="nav-container">
-      <div class="brand">
-        <span class="brand-badge">XAI 2.0</span>
-        <span class="brand-name">RiskLens</span>
-        <span class="brand-sub">Multi-Model Underwriting Suite</span>
+  <!-- Universal Floating Hover Tooltip -->
+  <div id="universal-tooltip" class="u-tooltip hidden" role="tooltip">
+    <div class="u-tooltip-title" id="u-tooltip-title"></div>
+    <div class="u-tooltip-body" id="u-tooltip-body"></div>
+    <div class="u-tooltip-meta" id="u-tooltip-meta"></div>
+    <div class="u-tooltip-arrow"></div>
+  </div>
+
+  <!-- Top Minimalist Brand Banner (Image 1 Style) -->
+  <header class="minimal-header">
+    <div class="header-inner">
+      <div class="brand-group">
+        <span class="brand-dot"></span>
+        <strong class="brand-title">RiskLens</strong>
+        <span class="brand-divider">/</span>
+        <span class="brand-sub">Credit Intelligence</span>
       </div>
-      <div class="nav-meta">
-        <span class="status-indicator"><i class="pulse-dot"></i> 4 ML Models Active</span>
-        <span class="nav-tag">Explainable AI (SHAP / Waterfall)</span>
+      
+      <div class="header-tags">
+        <span class="tech-chip" data-tip-title="Multi-Model Ensemble" data-tip-body="Scoring combines Random Forest, Gradient Boosting, Logistic Regression, and Neural Net." data-tip-meta="4 ML Engines Active">
+          <i></i> 4 ML Models
+        </span>
+        <span class="tech-chip" data-tip-title="Decision Tree XAI" data-tip-body="Visualizing decision logic scattering from node to node like real decision trees." data-tip-meta="Full Traceability">
+          <i></i> Tree Scattering XAI
+        </span>
       </div>
     </div>
   </header>
 
-  <!-- Main Application Shell -->
-  <main class="app-shell">
+  <main class="main-shell">
     
-    <!-- Hero / Headline -->
-    <header class="page-header">
-      <div class="header-left">
-        <p class="section-tag">MULTI-ARCHITECTURE MACHINE LEARNING & EXPLAINABLE AI</p>
-        <h1>Institutional Credit Risk Intelligence</h1>
-        <p class="subtitle">
-          Evaluate default risk across <strong>Random Forest</strong>, <strong>Gradient Boosting</strong>, 
-          <strong>Logistic Regression</strong>, and <strong>Deep Neural Network</strong> with auditable, step-by-step decision attribution.
-        </p>
-      </div>
-      <div class="header-metrics" id="suite-benchmarks-summary">
-        <div class="meta-pill">
-          <span class="pill-title">CONSENSUS AUC</span>
-          <strong class="pill-value" id="top-auc">98.7%</strong>
-        </div>
-        <div class="meta-pill">
-          <span class="pill-title">POPULATION BASELINE RISK</span>
-          <strong class="pill-value" id="top-baseline">28.5%</strong>
-        </div>
-        <div class="meta-pill">
-          <span class="pill-title">AUDIT LEVEL</span>
-          <strong class="pill-value">4 Tiers (XAI)</strong>
-        </div>
-      </div>
-    </header>
-
-    <!-- Content Layout: Input Form + Dynamic Results Dashboard -->
-    <div class="dashboard-grid">
+    <!-- Top 4 Pastel Metric Blocks (Image 3 Style) -->
+    <section class="pastel-strip">
       
-      <!-- Left Column: Input Form & Sample Profiles -->
-      <section class="panel input-panel">
-        <div class="panel-header">
+      <!-- Box 1: Default Risk -->
+      <div class="pastel-box box-risk" data-tip-title="Consensus Default Risk" data-tip-body="The blended likelihood that the borrower will fail to meet debt obligations, synthesized across all 4 machine learning models." data-tip-meta="Prime standard is under 15%">
+        <div class="pastel-value" id="top-score">1%</div>
+        <div class="pastel-label">CALCULATED DEFAULT RISK</div>
+      </div>
+
+      <!-- Box 2: Indicative Sanction -->
+      <div class="pastel-box box-sanction" data-tip-title="Indicative Sanction Limit" data-tip-body="Maximum recommended loan sanction calculated conservatively based on monthly disposable surplus cashflow." data-tip-meta="Cashflow buffer calibrated">
+        <div class="pastel-value" id="top-sanction">₹ 11.5L</div>
+        <div class="pastel-label">MAX INDICATIVE SANCTION</div>
+      </div>
+
+      <!-- Box 3: Model Consensus -->
+      <div class="pastel-box box-consensus" data-tip-title="Model Agreement Rate" data-tip-body="Counts how many of the 4 independent algorithmic paradigms (Linear, Bagging, Boosting, Neural) reach the exact same risk tier." data-tip-meta="Convergence metric">
+        <div class="pastel-value" id="top-agreement">4 / 4</div>
+        <div class="pastel-label">MODELS IN AGREEMENT</div>
+      </div>
+
+      <!-- Box 4: Verdict Tier -->
+      <div class="pastel-box box-verdict" data-tip-title="Underwriting Verdict" data-tip-body="Final credit underwriting categorization reflecting loan eligibility, interest rate tier, and required risk covenants." data-tip-meta="Policy action tier">
+        <div class="pastel-value" id="top-verdict">Prime Tier</div>
+        <div class="pastel-label">UNDERWRITING VERDICT</div>
+      </div>
+
+    </section>
+
+    <!-- Workspace Grid: Input Drawer + Visual Graph Explorer -->
+    <div class="workspace-grid">
+      
+      <!-- Left Column: Input Form (Super Clean & Minimal) -->
+      <aside class="input-card">
+        
+        <div class="input-card-top">
           <div>
-            <h2>Applicant Financial Profile</h2>
-            <p class="panel-desc">Ingest applicant parameters to run parallel inference.</p>
+            <h3>Applicant Profile</h3>
+            <p>Select a preset or enter financial details</p>
           </div>
         </div>
 
-        <!-- Quick Profile Presets -->
-        <div class="presets-section">
-          <span class="preset-label">Test Profiles:</span>
-          <div class="preset-buttons">
-            <button type="button" class="preset-btn active" data-preset="prime">Prime</button>
-            <button type="button" class="preset-btn" data-preset="moderate">Moderate</button>
-            <button type="button" class="preset-btn" data-preset="strained">Strained</button>
-            <button type="button" class="preset-btn" data-preset="newbie">New-to-Credit</button>
-          </div>
+        <!-- Preset Pills -->
+        <div class="preset-strip">
+          <button type="button" class="preset-pill active" data-preset="prime" data-tip-title="Prime Borrower Preset" data-tip-body="Strong salary (₹75k), low debt (₹12k), clean repayment history (0 missed), 7y credit tenure." data-tip-meta="Expected: Low Risk">Prime</button>
+          <button type="button" class="preset-pill" data-preset="moderate" data-tip-title="Moderate Risk Preset" data-tip-body="Medium salary (₹48k), higher debt (₹18k), 1 isolated missed payment, 4.5y credit tenure." data-tip-meta="Expected: Moderate Risk">Standard</button>
+          <button type="button" class="preset-pill" data-preset="strained" data-tip-title="Strained Profile Preset" data-tip-body="Lower salary (₹38k), heavy debts (₹24k), 3 missed payments in 12m, subprime rate." data-tip-meta="Expected: High Risk">Strained</button>
+          <button type="button" class="preset-pill" data-preset="newbie" data-tip-title="New-to-Credit Preset" data-tip-body="Healthy income (₹55k) and zero missed payments, but young credit track (0.8 years)." data-tip-meta="Expected: Low/Mod Risk">New-to-Credit</button>
         </div>
 
-        <!-- Input Form -->
-        <form id="risk-form" novalidate>
-          <div class="fields-grid">
+        <form id="credit-form" novalidate>
+          <div class="form-fields">
             
-            <div class="field-group">
-              <label for="monthly_income">
-                Monthly Income
-                <span class="field-unit">₹ INR</span>
+            <div class="field-row">
+              <label for="monthly_income" data-tip-title="Monthly Income" data-tip-body="Gross verifiable monthly salary or regular operating business earnings before taxes." data-tip-meta="Minimum required: ₹2,000">
+                Monthly Income <span class="info-icon">?</span>
               </label>
-              <div class="input-wrapper">
-                <input required min="1" step="500" type="number" id="monthly_income" name="monthly_income" value="75000" placeholder="75,000">
+              <div class="field-input-box">
+                <span class="field-curr">₹</span>
+                <input required min="1000" step="500" type="number" id="monthly_income" name="monthly_income" value="75000">
               </div>
-              <span class="field-hint">Gross verifiable monthly salary</span>
             </div>
 
-            <div class="field-group">
-              <label for="monthly_debt_payments">
-                Monthly Debt Payments
-                <span class="field-unit">₹ INR</span>
+            <div class="field-row">
+              <label for="monthly_debt_payments" data-tip-title="Monthly Debt Obligations" data-tip-body="Sum total of all ongoing monthly EMI payments, personal loan installments, and credit card minimum dues." data-tip-meta="Used to compute DTI ratio">
+                Monthly Debt Payments <span class="info-icon">?</span>
               </label>
-              <div class="input-wrapper">
-                <input required min="0" step="500" type="number" id="monthly_debt_payments" name="monthly_debt_payments" value="12000" placeholder="12,000">
+              <div class="field-input-box">
+                <span class="field-curr">₹</span>
+                <input required min="0" step="500" type="number" id="monthly_debt_payments" name="monthly_debt_payments" value="12000">
               </div>
-              <span class="field-hint">Existing EMIs & credit obligations</span>
             </div>
 
-            <div class="field-group">
-              <label for="loan_amount">
-                Requested Loan Amount
-                <span class="field-unit">₹ INR</span>
+            <div class="field-row">
+              <label for="loan_amount" data-tip-title="Requested Loan Principal" data-tip-body="The principal loan borrowing amount requested by the applicant." data-tip-meta="Used to compute LTI multiple">
+                Requested Loan Amount <span class="info-icon">?</span>
               </label>
-              <div class="input-wrapper">
-                <input required min="1000" step="5000" type="number" id="loan_amount" name="loan_amount" value="250000" placeholder="2,50,000">
+              <div class="field-input-box">
+                <span class="field-curr">₹</span>
+                <input required min="1000" step="5000" type="number" id="loan_amount" name="loan_amount" value="250000">
               </div>
-              <span class="field-hint">Target principal credit facility</span>
             </div>
 
-            <div class="field-group">
-              <label for="annual_interest_rate">
-                Annual Interest Rate
-                <span class="field-unit">% APR</span>
+            <div class="field-row">
+              <label for="annual_interest_rate" data-tip-title="Annual Interest Rate (APR)" data-tip-body="Contractual annual interest rate of the loan facility. Higher APR indicates elevated credit spread." data-tip-meta="Prime rates typically < 12%">
+                Annual Interest Rate <span class="info-icon">?</span>
               </label>
-              <div class="input-wrapper">
-                <input required min="1" max="100" step="0.1" type="number" id="annual_interest_rate" name="annual_interest_rate" value="9.5" placeholder="9.5">
+              <div class="field-input-box">
+                <span class="field-curr">%</span>
+                <input required min="1" max="100" step="0.1" type="number" id="annual_interest_rate" name="annual_interest_rate" value="9.5">
               </div>
-              <span class="field-hint">Contractual borrowing rate</span>
             </div>
 
-            <div class="field-group">
-              <label for="credit_history_years">
-                Credit History Length
-                <span class="field-unit">Years</span>
+            <div class="field-row">
+              <label for="credit_history_years" data-tip-title="Credit History Length" data-tip-body="Duration in years since the borrower's first documented credit line or credit bureau inquiry." data-tip-meta="Prime depth is 5+ years">
+                Credit History Length <span class="info-icon">?</span>
               </label>
-              <div class="input-wrapper">
-                <input required min="0.1" max="60" step="0.5" type="number" id="credit_history_years" name="credit_history_years" value="7.0" placeholder="7.0">
+              <div class="field-input-box">
+                <span class="field-curr">Yrs</span>
+                <input required min="0.1" max="60" step="0.5" type="number" id="credit_history_years" name="credit_history_years" value="7.0">
               </div>
-              <span class="field-hint">Active documented credit tenure</span>
             </div>
 
-            <div class="field-group">
-              <label for="missed_payments_12m">
-                Missed Payments (12m)
-                <span class="field-unit">Events</span>
+            <div class="field-row">
+              <label for="missed_payments_12m" data-tip-title="Missed Payments (Last 12 Months)" data-tip-body="Count of 30+ Days Past Due (DPD) delinquencies recorded over the preceding 12 calendar months." data-tip-meta="Zero delinquencies required for prime">
+                Missed Payments (12m) <span class="info-icon">?</span>
               </label>
-              <div class="input-wrapper">
-                <input required min="0" max="30" step="1" type="number" id="missed_payments_12m" name="missed_payments_12m" value="0" placeholder="0">
+              <div class="field-input-box">
+                <span class="field-curr">#</span>
+                <input required min="0" max="30" step="1" type="number" id="missed_payments_12m" name="missed_payments_12m" value="0">
               </div>
-              <span class="field-hint">30+ DPD late repayment counts</span>
             </div>
 
           </div>
 
-          <button type="submit" class="primary-btn" id="submit-btn">
-            <span class="btn-text">Run Multi-Model Assessment</span>
-            <span class="btn-arrow">→</span>
+          <button type="submit" class="submit-action-btn" id="submit-btn">
+            <span id="submit-text">Run Assessment</span>
+            <span class="arrow-glyph">→</span>
           </button>
 
-          <p class="form-error" id="form-error" role="alert"></p>
+          <div class="err-msg" id="form-error"></div>
         </form>
 
-        <div class="panel-footer-note">
-          <span>* Deterministic educational pipeline trained at startup. Illustrative underwriter tool.</span>
+        <!-- Fast Ratio Chips -->
+        <div class="quick-ratios" id="quick-ratios-box">
+          <div class="ratio-chip" id="chip-dti" data-tip-title="Debt-to-Income (DTI)" data-tip-body="Monthly Debt / Monthly Income. Ratios under 36% are considered safe; above 45% is strained." data-tip-meta="Current: 16.0%">
+            <span>DTI</span> <strong id="val-dti">16.0%</strong>
+          </div>
+          <div class="ratio-chip" id="chip-lti" data-tip-title="Loan-to-Annual-Income (LTI)" data-tip-body="Requested Principal / Annual Gross Salary. Multiples under 1.5x are comfortable." data-tip-meta="Current: 0.28x">
+            <span>LTI</span> <strong id="val-lti">0.28x</strong>
+          </div>
+          <div class="ratio-chip" id="chip-delinq" data-tip-title="Delinquency Status" data-tip-body="Recent repayment track record over the past 12 months." data-tip-meta="Clean repayment">
+            <span>Track</span> <strong id="val-track">Clean (0)</strong>
+          </div>
         </div>
-      </section>
 
-      <!-- Right Column: Results, Multi-Model Scoreboard & Explainable AI -->
-      <section class="panel results-panel">
+      </aside>
+
+      <!-- Right Column: Visual Graph & Tree Explorer (Image 2 Blueprint Style) -->
+      <section class="visual-explorer-card">
         
-        <!-- Navigation View Tabs -->
-        <nav class="view-tabs" role="tablist">
-          <button type="button" class="tab-btn active" role="tab" data-tab="tab-overview" aria-selected="true">
-            Decision & Leveled Flow
-          </button>
-          <button type="button" class="tab-btn" role="tab" data-tab="tab-xai" aria-selected="false">
-            Explainable AI (Graphs)
-          </button>
-          <button type="button" class="tab-btn" role="tab" data-tab="tab-models" aria-selected="false">
-            Model Benchmarks & Comparison
-          </button>
-        </nav>
+        <!-- View Switcher Tabs -->
+        <div class="explorer-nav">
+          <div class="tab-pill-group">
+            <button type="button" class="view-pill active" data-view="view-tree">
+              <span class="pill-dot"></span> Decision Tree (Node Scatter)
+            </button>
+            <button type="button" class="view-pill" data-view="view-hub">
+              <span class="pill-dot"></span> Architecture Flow (Image 2 Hub)
+            </button>
+            <button type="button" class="view-pill" data-view="view-xai">
+              <span class="pill-dot"></span> XAI Waterfall & Feature Weights
+            </button>
+            <button type="button" class="view-pill" data-view="view-models">
+              <span class="pill-dot"></span> Model Benchmarks
+            </button>
+          </div>
 
-        <!-- Initial Placeholder State -->
-        <div id="results-placeholder" class="placeholder-state">
-          <div class="placeholder-icon">📊</div>
-          <h3>Awaiting Profile Inference</h3>
-          <p>Submit applicant information or choose a preset profile above to trigger multi-model inference, XAI waterfall decomposition, and step-by-step decision leveling.</p>
+          <div class="interactive-hint">
+            <span class="hint-pulse"></span>
+            <span>Hover over nodes & lines for instant explanations</span>
+          </div>
         </div>
 
-        <!-- Loaded Results Container -->
-        <div id="results-content" class="results-content hidden">
-
-          <!-- View 1: Overview & Leveled Decision Pipeline -->
-          <div id="tab-overview" class="tab-pane active" role="tabpanel">
-            
-            <!-- Executive Summary Top Row -->
-            <div class="exec-summary-card">
-              <div class="gauge-col">
-                <div class="radial-gauge" id="risk-gauge" data-level="low">
-                  <svg viewBox="0 0 120 120" class="gauge-svg">
-                    <circle class="gauge-bg" cx="60" cy="60" r="50"></circle>
-                    <circle class="gauge-progress" id="gauge-circle" cx="60" cy="60" r="50"></circle>
-                  </svg>
-                  <div class="gauge-inner">
-                    <strong id="display-score">1</strong>
-                    <span class="gauge-label">RISK / 100</span>
-                  </div>
-                </div>
+        <!-- Blueprint Canvas Viewport -->
+        <div class="blueprint-canvas">
+          
+          <!-- VIEW 1: Decision Tree Branching Graph (Node Scattering) -->
+          <div id="view-tree" class="view-panel active">
+            <div class="tree-canvas-header">
+              <div>
+                <h4>Interactive Decision Tree Scattering Graph</h4>
+                <p>Nodes scatter from Root condition into branch criteria. Glowing paths indicate the exact decision taken for this applicant.</p>
               </div>
-
-              <div class="summary-details">
-                <div class="badge-row">
-                  <span class="status-badge" id="risk-band-badge">Low Risk</span>
-                  <span class="agreement-badge" id="model-agreement-badge">4/4 models agree</span>
-                </div>
-                <h3 id="verdict-title" class="verdict-heading">Favourable Profile — Prime Tier</h3>
-                <p id="advisory-text" class="advisory-copy">Exceptional financial discipline. Eligible for prime tier rates and maximum tenure flexibility.</p>
-                
-                <div class="sanction-banner">
-                  <div class="sanction-item">
-                    <span class="sub-label">INDICATIVE SANCTION RANGE</span>
-                    <strong class="sanction-val" id="sanction-range-text">₹ 3,85,000 – ₹ 11,50,000</strong>
-                  </div>
-                  <div class="sanction-item">
-                    <span class="sub-label">DISPOSABLE CASHFLOW SURPLUS</span>
-                    <strong class="sanction-val" id="disposable-income-text">₹ 63,000 / mo</strong>
-                  </div>
-                </div>
+              <div class="tree-legend">
+                <span class="leg-item"><i class="leg-dot active-dot"></i> Active Branch Taken</span>
+                <span class="leg-item"><i class="leg-dot dim-dot"></i> Inactive Alternate Path</span>
               </div>
             </div>
 
-            <!-- Leveled Decision Pipeline Section -->
-            <div class="leveled-pipeline-section">
-              <div class="section-heading">
-                <h4>Leveled Decision Pipeline</h4>
-                <span class="section-sub">Chronological audit trail showing step-by-step decision progression</span>
-              </div>
-
-              <div class="levels-container" id="levels-container">
-                <!-- Dynamically populated by JS -->
-              </div>
+            <!-- Dynamic Decision Tree SVG Viewport -->
+            <div class="tree-viewport" id="tree-viewport-container">
+              <!-- SVG tree graph injected and animated by app.js -->
             </div>
 
+            <!-- Active Path Summary Bar -->
+            <div class="path-summary-card" id="path-summary-card">
+              <span class="path-title">DECISION PATH TAKEN:</span>
+              <div class="path-steps" id="path-steps-list">
+                <!-- Dynamically populated breadcrumb chips -->
+              </div>
+            </div>
           </div>
 
-          <!-- View 2: Explainable AI (XAI) Graphs -->
-          <div id="tab-xai" class="tab-pane" role="tabpanel">
-            
-            <div class="xai-header">
-              <div>
-                <h4>Explainable AI (XAI) Analytics</h4>
-                <p class="panel-desc">Transparent factor attribution breaking down exactly how inputs drive or mitigate default risk.</p>
-              </div>
-              <div class="xai-legend">
-                <span class="legend-item"><i class="dot-red"></i> Risk Increase (+)</span>
-                <span class="legend-item"><i class="dot-green"></i> Risk Mitigation (-)</span>
-                <span class="legend-item"><i class="dot-blue"></i> Baseline / Net Total</span>
-              </div>
-            </div>
-
-            <!-- Graph 1: Instance-Level Waterfall Chart -->
-            <div class="chart-card">
-              <div class="chart-card-header">
-                <div>
-                  <h5>1. Local Waterfall Attribution (Applicant Specific)</h5>
-                  <span class="chart-desc">Shows step-by-step additions and reductions starting from the population base rate.</span>
-                </div>
-                <span class="chart-badge">Instance Attribution</span>
-              </div>
+          <!-- VIEW 2: Architecture Hub View (Image 2 Reference Style) -->
+          <div id="view-hub" class="view-panel">
+            <div class="hub-container">
               
-              <!-- SVG Waterfall Container -->
-              <div class="waterfall-container" id="waterfall-chart-container">
-                <!-- SVG dynamically injected by app.js -->
-              </div>
-
-              <div class="waterfall-summary" id="waterfall-summary-box">
-                <!-- Top risk driver & mitigant chips -->
-              </div>
-            </div>
-
-            <!-- Graph 2: Global Feature Importance Comparison Across Algorithms -->
-            <div class="chart-card" style="margin-top: 24px;">
-              <div class="chart-card-header">
-                <div>
-                  <h5>2. Global Feature Importance Across ML Algorithms</h5>
-                  <span class="chart-desc">Compare the internal feature weight assigned by Random Forest, Gradient Boosting, and Logistic Regression.</span>
+              <!-- Left Inputs Column -->
+              <div class="hub-col hub-inputs">
+                <div class="hub-node" data-tip-title="Input 1: Income & Debt" data-tip-body="Verifiable monthly cashflow and existing debt servicing obligations." data-tip-meta="Level 1">
+                  <span class="hub-icon">💼</span>
+                  <div class="hub-node-text">
+                    <strong>Cashflow Ratios</strong>
+                    <span id="hub-dti-label">DTI: 16.0%</span>
+                  </div>
                 </div>
-                <!-- Model Switcher for Global XAI -->
-                <div class="algo-switcher" id="algo-switcher">
-                  <button type="button" class="algo-btn active" data-algo="consensus">Consensus</button>
-                  <button type="button" class="algo-btn" data-algo="random_forest">Random Forest</button>
-                  <button type="button" class="algo-btn" data-algo="gradient_boosting">Gradient Boosting</button>
-                  <button type="button" class="algo-btn" data-algo="logistic_regression">Logistic Reg</button>
+
+                <div class="hub-node" data-tip-title="Input 2: Loan Principal" data-tip-body="Requested credit principal normalized against annual borrower earning power." data-tip-meta="Level 1">
+                  <span class="hub-icon">🏛️</span>
+                  <div class="hub-node-text">
+                    <strong>Loan Leverage</strong>
+                    <span id="hub-lti-label">LTI: 0.28x</span>
+                  </div>
+                </div>
+
+                <div class="hub-node" data-tip-title="Input 3: Credit Tenure" data-tip-body="Historical depth of active repayment seasoning across credit cycles." data-tip-meta="Level 1">
+                  <span class="hub-icon">📜</span>
+                  <div class="hub-node-text">
+                    <strong>Credit Tenure</strong>
+                    <span id="hub-tenure-label">7.0 Years</span>
+                  </div>
+                </div>
+
+                <div class="hub-node" data-tip-title="Input 4: Repayment Track" data-tip-body="Delinquency count in the last 12 months. Prime requires clean record." data-tip-meta="Level 1">
+                  <span class="hub-icon">⚡</span>
+                  <div class="hub-node-text">
+                    <strong>Delinquency Flag</strong>
+                    <span id="hub-missed-label">0 Missed</span>
+                  </div>
                 </div>
               </div>
 
-              <!-- Bar Chart Container -->
-              <div class="global-importance-bars" id="global-importance-container">
-                <!-- Dynamically rendered horizontal bars -->
-              </div>
-            </div>
+              <!-- Center Hub Ring (Image 2 Center Ring Style) -->
+              <div class="hub-col hub-center">
+                <div class="radial-hub-ring" data-tip-title="Ensemble Inference Hub" data-tip-body="Consensus convergence blending Random Forest, Gradient Boosting, Logistic Regression, and Neural Net." data-tip-meta="4 Algorithmic Paradigms">
+                  <div class="hub-ring-svg-wrap">
+                    <svg viewBox="0 0 160 160" class="ring-svg">
+                      <circle cx="80" cy="80" r="70" class="ring-track"></circle>
+                      <circle cx="80" cy="80" r="70" class="ring-segment seg-rf"></circle>
+                      <circle cx="80" cy="80" r="70" class="ring-segment seg-gb"></circle>
+                      <circle cx="80" cy="80" r="70" class="ring-segment seg-lr"></circle>
+                    </svg>
+                  </div>
+                  
+                  <div class="hub-center-core">
+                    <span class="core-logo">RL</span>
+                    <strong class="core-title">RiskLens Hub</strong>
+                    <span class="core-sub" id="hub-consensus-sub">4 ML Engines</span>
+                  </div>
+                </div>
 
-            <!-- Detailed Factor Breakdown Cards -->
-            <div class="factor-cards-section" style="margin-top: 24px;">
-              <h5>Detailed Factor Impact Diagnostics</h5>
-              <div class="factor-grid" id="factor-cards-grid">
-                <!-- Factor cards injected here -->
+                <div class="hub-models-strip">
+                  <span class="model-tag-pill" data-tip-title="Random Forest" data-tip-body="100 decision trees with randomized feature subsampling." data-tip-meta="Bagging Ensemble">Random Forest</span>
+                  <span class="model-tag-pill" data-tip-title="Gradient Boosting" data-tip-body="Iterative residual minimizer using gradient boosted trees." data-tip-meta="Boosting Ensemble">Gradient Boosting</span>
+                  <span class="model-tag-pill" data-tip-title="Logistic Regression" data-tip-body="Linear statistical baseline with scaled feature weights." data-tip-meta="Linear Baseline">Logistic Reg</span>
+                  <span class="model-tag-pill" data-tip-title="Neural Network" data-tip-body="Multi-Layer Perceptron capturing deep non-linear manifolds." data-tip-meta="MLP Network">Neural Net</span>
+                </div>
               </div>
-            </div>
 
+              <!-- Right Structured Terminal Output (Image 2 Terminal Card Style) -->
+              <div class="hub-col hub-output">
+                <div class="terminal-card">
+                  <div class="terminal-header">
+                    <div class="terminal-dots">
+                      <span></span><span></span><span></span>
+                    </div>
+                    <span class="terminal-title">underwriting_verdict.json</span>
+                  </div>
+                  <pre class="terminal-code" id="terminal-json-output">
+{
+  "applicant_id": "APPL-8921",
+  "default_risk_score": 1,
+  "default_probability": "0.6%",
+  "verdict": "Prime Tier Approval",
+  "indicative_sanction": {
+    "min_inr": 385000,
+    "max_inr": 1150000
+  },
+  "models_converged": "4/4",
+  "audit_status": "VERIFIED_SAFE"
+}
+                  </pre>
+                </div>
+              </div>
+
+            </div>
           </div>
 
-          <!-- View 3: Multi-Model Benchmark & Comparison -->
-          <div id="tab-models" class="tab-pane" role="tabpanel">
-            
-            <div class="models-header">
-              <div>
-                <h4>Multi-Model Architecture Comparison</h4>
-                <p class="panel-desc">Evaluating 4 distinct algorithmic paradigms trained on the financial ratio feature space.</p>
+          <!-- VIEW 3: Explainable AI (XAI) Waterfall & Feature Weights -->
+          <div id="view-xai" class="view-panel">
+            <div class="xai-panel-inner">
+              
+              <!-- Local Waterfall Section -->
+              <div class="xai-box">
+                <div class="xai-box-head">
+                  <div>
+                    <h5>Local Attribution Waterfall (Applicant Specific)</h5>
+                    <span class="sub-muted">Shows step-by-step risk adjustments starting from the population baseline risk.</span>
+                  </div>
+                  <span class="xai-tag">Instance XAI</span>
+                </div>
+                
+                <div class="waterfall-chart-wrap" id="waterfall-wrap">
+                  <!-- Injected by app.js -->
+                </div>
+
+                <div class="xai-driver-chips" id="xai-drivers-box">
+                  <!-- Top driver & mitigant chips -->
+                </div>
               </div>
-            </div>
 
-            <!-- Side-by-Side Model Prediction Cards -->
-            <div class="models-grid" id="models-prediction-grid">
-              <!-- Dynamically populated model cards -->
-            </div>
+              <!-- Global Feature Importance Section -->
+              <div class="xai-box" style="margin-top: 20px;">
+                <div class="xai-box-head">
+                  <div>
+                    <h5>Global Feature Importance Across ML Algorithms</h5>
+                    <span class="sub-muted">Compare how different algorithms weight the 5 financial variables.</span>
+                  </div>
+                  <div class="model-toggles" id="algo-toggle-strip">
+                    <button type="button" class="toggle-pill active" data-algo="consensus">Consensus</button>
+                    <button type="button" class="toggle-pill" data-algo="random_forest">Random Forest</button>
+                    <button type="button" class="toggle-pill" data-algo="gradient_boosting">Gradient Boosting</button>
+                    <button type="button" class="toggle-pill" data-algo="logistic_regression">Logistic Reg</button>
+                  </div>
+                </div>
 
-            <!-- Comprehensive Holdout Test Metric Benchmark Table -->
-            <div class="benchmark-table-wrapper" style="margin-top: 24px;">
-              <h5>Holdout Test Benchmark Performance (3,200 Sample Population)</h5>
-              <table class="benchmark-table">
-                <thead>
-                  <tr>
-                    <th>Model Architecture</th>
-                    <th>Algorithm Paradigm</th>
-                    <th>Accuracy</th>
-                    <th>ROC-AUC</th>
-                    <th>Precision</th>
-                    <th>Recall</th>
-                    <th>F1-Score</th>
-                    <th>Ensemble Weight</th>
-                  </tr>
-                </thead>
-                <tbody id="benchmark-table-body">
-                  <!-- Populated by JS -->
-                </tbody>
-              </table>
-            </div>
+                <div class="global-bars-grid" id="global-bars-grid">
+                  <!-- Rendered dynamically -->
+                </div>
+              </div>
 
+            </div>
+          </div>
+
+          <!-- VIEW 4: Multi-Model Benchmark Comparison -->
+          <div id="view-models" class="view-panel">
+            <div class="models-panel-inner">
+              
+              <div class="models-cards-row" id="models-cards-row">
+                <!-- 4 Model cards -->
+              </div>
+
+              <div class="table-wrap">
+                <table class="minimal-table">
+                  <thead>
+                    <tr>
+                      <th data-tip-title="Model Name" data-tip-body="The specific ML algorithm evaluated." data-tip-meta="4 Paradigms">Model</th>
+                      <th data-tip-title="Approach" data-tip-body="The family of machine learning algorithm." data-tip-meta="Technique">Family</th>
+                      <th data-tip-title="Accuracy" data-tip-body="Percentage of correct test predictions." data-tip-meta="Holdout metric">Accuracy</th>
+                      <th data-tip-title="ROC-AUC Score" data-tip-body="Area Under Receiver Operating Characteristic Curve. 100% is perfect discrimination." data-tip-meta="Standard credit metric">ROC-AUC</th>
+                      <th data-tip-title="Precision" data-tip-body="Proportion of predicted defaults that were actual defaults." data-tip-meta="Avoids false alarms">Precision</th>
+                      <th data-tip-title="Recall" data-tip-body="Proportion of actual defaults identified by the model." data-tip-meta="Catching high risks">Recall</th>
+                      <th data-tip-title="F1-Score" data-tip-body="Harmonic balance of precision and recall." data-tip-meta="Core benchmark">F1-Score</th>
+                      <th data-tip-title="Ensemble Weight" data-tip-body="Contribution to final consensus decision." data-tip-meta="Weighting">Weight</th>
+                    </tr>
+                  </thead>
+                  <tbody id="benchmark-tbody">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+
+            </div>
           </div>
 
         </div>
@@ -354,10 +414,10 @@
     </div>
   </main>
 
-  <footer class="app-footer">
-    <div class="footer-inner">
-      <span>RiskLens Credit Assessment Engine • Scikit-Learn 1.9.1 • Explainable AI (XAI) Suite</span>
-      <span>Deterministic educational prototype. Not for real statutory lending decisions.</span>
+  <footer class="minimal-foot">
+    <div class="foot-inner">
+      <span>RiskLens Underwriting Intelligence • Scikit-Learn 1.9.1 • Decision Tree & XAI Engine</span>
+      <span>Hover over any term, ratio, or node for instant interactive explanations.</span>
     </div>
   </footer>
 
