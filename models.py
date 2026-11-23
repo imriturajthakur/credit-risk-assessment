@@ -364,15 +364,26 @@ class CreditRiskModelSuite:
         lti_val = raw_values.get("loan_to_income", 0.0)
         missed = raw_values.get("missed_payments_12m", 0.0)
         history = raw_values.get("credit_history_years", 0.0)
+        rate_pct = raw_values.get("annual_interest_rate", 0.0) * 100.0
 
         path_nodes = ["root"]
         path_edges = []
         evaluations = {
             "root": {
-                "title": "Root Node: Applicant Profile Ingested",
-                "condition": "Ingest 5 normalized financial metrics",
+                "step": 1,
+                "title": "Root Node: Financial Ingestion & Normalization",
+                "condition": "Parse & standardize 5 financial inputs",
+                "formula": f"DTI = debt/income ({dti_pct:.1f}%), LTI = loan/(income*12) ({lti_val:.2f}x)",
                 "status": "PASS",
-                "detail": f"DTI: {dti_pct:.1f}%, LTI: {lti_val:.2f}x, Missed: {int(missed)}, History: {history:.1f}y",
+                "detail": f"Monthly Income & Debt normalized into DTI ({dti_pct:.1f}%), Loan into LTI ({lti_val:.2f}x), APR ({rate_pct:.1f}%), History ({history:.1f}y), Delinquency ({int(missed)}).",
+                "inputs_used": {
+                    "Debt-to-Income": f"{dti_pct:.1f}%",
+                    "Loan-to-Income": f"{lti_val:.2f}x",
+                    "Credit History": f"{history:.1f} years",
+                    "Missed Payments": f"{int(missed)} events",
+                    "Interest Rate": f"{rate_pct:.1f}%",
+                },
+                "verdict_impact": "Initial financial profile normalized successfully. Starting decision sequence.",
             }
         }
 
@@ -381,111 +392,159 @@ class CreditRiskModelSuite:
             path_nodes.append("node_clean")
             path_edges.append("e_root_clean")
             evaluations["node_clean"] = {
+                "step": 2,
                 "title": "Branch A: Clean Repayment Track",
-                "condition": "Missed Payments == 0",
-                "status": "TRUE",
-                "detail": f"Applicant has 0 missed payments in 12m. Scatters into Debt-to-Income evaluation.",
+                "condition": "missed_payments_12m == 0",
+                "formula": f"0 missed payments == 0 -> EVALUATES TO TRUE",
+                "status": "PASS",
+                "detail": f"Applicant has 0 recorded delinquencies in the last 12 months. Branches into low-risk solvency evaluation.",
+                "inputs_used": {"Missed Payments (12m)": "0 events", "Threshold": "== 0 events"},
+                "verdict_impact": "Clean track unlocked. Applicant eligible for Prime and Standard tiers.",
             }
             # Level 2 Split: DTI
             if dti_pct <= 36.0:
                 path_nodes.append("node_low_dti")
                 path_edges.append("e_clean_low_dti")
                 evaluations["node_low_dti"] = {
-                    "title": "Sub-Branch A1: Low Debt-to-Income",
+                    "step": 3,
+                    "title": "Sub-Branch A1: Safe Debt-to-Income Burden",
                     "condition": "DTI <= 36.0%",
-                    "status": "TRUE",
-                    "detail": f"Applicant DTI is {dti_pct:.1f}% (<= 36%). Healthy monthly surplus verified.",
+                    "formula": f"{dti_pct:.1f}% <= 36.0% -> EVALUATES TO TRUE",
+                    "status": "PASS",
+                    "detail": f"Applicant's monthly debt payments represent {dti_pct:.1f}% of income, leaving a comfortable 64%+ surplus for living expenses.",
+                    "inputs_used": {"Current DTI": f"{dti_pct:.1f}%", "Banking Benchmark": "<= 36.0%"},
+                    "verdict_impact": "High monthly cashflow surplus verified. Advances to Loan Leverage check.",
                 }
                 # Level 3 Split: LTI
                 if lti_val <= 1.50:
                     path_nodes.append("leaf_prime")
                     path_edges.append("e_low_dti_prime")
                     evaluations["leaf_prime"] = {
+                        "step": 4,
                         "title": "Leaf Verdict: Prime Tier Approval",
-                        "condition": "LTI <= 1.50x",
+                        "condition": "LTI <= 1.50x annual income",
+                        "formula": f"{lti_val:.2f}x <= 1.50x -> OPTIMAL LEVERAGE",
                         "status": "APPROVED",
-                        "detail": f"LTI is {lti_val:.2f}x annual income. Top tier credit sanction with preferential rates.",
+                        "detail": f"Requested loan of {lti_val:.2f}x annual earnings is well within prime underwriting limits. Lowest default probability (~1-3%).",
+                        "inputs_used": {"Loan Multiple (LTI)": f"{lti_val:.2f}x", "Prime Limit": "<= 1.50x"},
+                        "verdict_impact": "Approved for Tier-1 preferential interest rates and maximum sanction limits.",
                     }
                 else:
                     path_nodes.append("leaf_standard")
                     path_edges.append("e_low_dti_std")
                     evaluations["leaf_standard"] = {
+                        "step": 4,
                         "title": "Leaf Verdict: Standard Tier (High Loan Scale)",
-                        "condition": "LTI > 1.50x",
+                        "condition": "LTI > 1.50x annual income",
+                        "formula": f"{lti_val:.2f}x > 1.50x -> MODERATE LEVERAGE",
                         "status": "APPROVED",
-                        "detail": f"LTI is {lti_val:.2f}x annual income. Manageable risk with standard loan sizing.",
+                        "detail": f"Borrower has clean repayment and safe DTI, but high requested principal ({lti_val:.2f}x annual salary) scales repayment commitment.",
+                        "inputs_used": {"Loan Multiple (LTI)": f"{lti_val:.2f}x", "Standard Cap": "<= 2.50x"},
+                        "verdict_impact": "Approved with standard interest tier and normal tenure amortization.",
                     }
             else:
                 path_nodes.append("node_high_dti")
                 path_edges.append("e_clean_high_dti")
                 evaluations["node_high_dti"] = {
-                    "title": "Sub-Branch A2: Elevated Debt-to-Income",
+                    "step": 3,
+                    "title": "Sub-Branch A2: Elevated Debt Commitments",
                     "condition": "DTI > 36.0%",
-                    "status": "TRUE",
-                    "detail": f"Applicant DTI is {dti_pct:.1f}% (> 36%). Credit tenure depth is evaluated.",
+                    "formula": f"{dti_pct:.1f}% > 36.0% -> ELEVATED DEBT BURDEN",
+                    "status": "WARNING",
+                    "detail": f"Applicant commits {dti_pct:.1f}% of income to existing debts. Credit history depth evaluated as compensatory mitigant.",
+                    "inputs_used": {"Current DTI": f"{dti_pct:.1f}%", "Safe Threshold": "<= 36.0%"},
+                    "verdict_impact": "DTI exceeds baseline. Testing whether deep credit history (>5 years) offsets risk.",
                 }
                 if history >= 5.0:
                     path_nodes.append("leaf_standard")
                     path_edges.append("e_high_dti_std")
                     evaluations["leaf_standard"] = {
+                        "step": 4,
                         "title": "Leaf Verdict: Standard Tier (Tenure Compensated)",
-                        "condition": "History >= 5.0y",
+                        "condition": "credit_history_years >= 5.0",
+                        "formula": f"{history:.1f} years >= 5.0y -> SEASONED BORROWER",
                         "status": "APPROVED",
-                        "detail": f"Extensive credit history ({history:.1f}y) mitigates elevated DTI burden.",
+                        "detail": f"Extensive {history:.1f} years of verified credit discipline offsets elevated debt commitments.",
+                        "inputs_used": {"Credit History": f"{history:.1f} years", "Seasoning Benchmark": ">= 5.0 years"},
+                        "verdict_impact": "Approved under Standard underwriting policy with verified track record.",
                     }
                 else:
                     path_nodes.append("leaf_strained")
                     path_edges.append("e_high_dti_strain")
                     evaluations["leaf_strained"] = {
-                        "title": "Leaf Verdict: Strained / Review Required",
-                        "condition": "History < 5.0y",
+                        "step": 4,
+                        "title": "Leaf Verdict: Strained Profile / Underwriter Review",
+                        "condition": "credit_history_years < 5.0",
+                        "formula": f"{history:.1f} years < 5.0y + DTI {dti_pct:.1f}% -> STRAINED",
                         "status": "REVIEW",
-                        "detail": f"Elevated DTI ({dti_pct:.1f}%) combined with short history ({history:.1f}y) elevates risk.",
+                        "detail": f"Elevated debt ratio ({dti_pct:.1f}%) combined with short repayment history ({history:.1f}y) elevates default vulnerability.",
+                        "inputs_used": {"DTI": f"{dti_pct:.1f}%", "Credit History": f"{history:.1f}y"},
+                        "verdict_impact": "Conditional sanction recommended. Requires additional guarantor or debt reduction.",
                     }
         else:
             path_nodes.append("node_delinquent")
             path_edges.append("e_root_delinq")
             evaluations["node_delinquent"] = {
-                "title": "Branch B: Delinquency Track",
-                "condition": "Missed Payments > 0",
-                "status": "TRUE",
-                "detail": f"Applicant has {int(missed)} missed payments recorded. Delinquency severity evaluated.",
+                "step": 2,
+                "title": "Branch B: Delinquency Track Activated",
+                "condition": "missed_payments_12m > 0",
+                "formula": f"{int(missed)} missed payments > 0 -> RISK WARNING",
+                "status": "WARNING",
+                "detail": f"Applicant has recorded {int(missed)} missed payments in past 12 months. Branching to delinquency severity check.",
+                "inputs_used": {"Missed Payments": f"{int(missed)} events", "Benchmark": "0 for prime"},
+                "verdict_impact": "Prime eligibility suspended due to active late payment events.",
             }
             if missed <= 2:
                 path_nodes.append("node_mild_delinq")
                 path_edges.append("e_delinq_mild")
                 evaluations["node_mild_delinq"] = {
-                    "title": "Sub-Branch B1: Isolated Delinquency",
-                    "condition": "Missed Payments <= 2",
-                    "status": "TRUE",
-                    "detail": f"Delinquency count is {int(missed)}. Checking whether DTI affords buffer.",
+                    "step": 3,
+                    "title": "Sub-Branch B1: Isolated Late Payments",
+                    "condition": "missed_payments_12m <= 2",
+                    "formula": f"{int(missed)} missed <= 2 -> MODERATE DELINQUENCY",
+                    "status": "WARNING",
+                    "detail": f"Isolated delinquencies noted ({int(missed)}). Checking if debt ratio allows buffer for recovery.",
+                    "inputs_used": {"Missed Count": f"{int(missed)}", "Threshold": "<= 2 events"},
+                    "verdict_impact": "Testing disposable cashflow buffer for debt servicing resilience.",
                 }
                 if dti_pct <= 42.0:
                     path_nodes.append("leaf_strained")
                     path_edges.append("e_mild_strain")
                     evaluations["leaf_strained"] = {
+                        "step": 4,
                         "title": "Leaf Verdict: Conditional Standard Review",
                         "condition": "DTI <= 42.0%",
+                        "formula": f"{dti_pct:.1f}% <= 42.0% -> CASHFLOW BUFFER INTACT",
                         "status": "REVIEW",
-                        "detail": f"DTI is {dti_pct:.1f}%. Recoverable profile with stricter covenants or co-borrower.",
+                        "detail": f"Despite late payments, DTI ({dti_pct:.1f}%) leaves room for recovery. Conditional approval advised.",
+                        "inputs_used": {"DTI": f"{dti_pct:.1f}%", "Max Strained Cap": "<= 42.0%"},
+                        "verdict_impact": "Review required. Co-borrower or auto-debit escrow required.",
                     }
                 else:
                     path_nodes.append("leaf_subprime")
                     path_edges.append("e_mild_subprime")
                     evaluations["leaf_subprime"] = {
+                        "step": 4,
                         "title": "Leaf Verdict: Subprime Risk Alert",
                         "condition": "DTI > 42.0%",
+                        "formula": f"{dti_pct:.1f}% > 42.0% + {int(missed)} missed -> COMPOUND DEFAULT RISK",
                         "status": "HIGH RISK",
-                        "detail": f"Compound risk: {int(missed)} missed payments and high DTI ({dti_pct:.1f}%).",
+                        "detail": f"Compound risk: multiple delinquencies combined with high debt servicing commitments (>42%).",
+                        "inputs_used": {"DTI": f"{dti_pct:.1f}%", "Missed": f"{int(missed)}"},
+                        "verdict_impact": "High default probability (>85%). Conservative sanction or restructuring needed.",
                     }
             else:
                 path_nodes.append("leaf_subprime")
                 path_edges.append("e_delinq_severe")
                 evaluations["leaf_subprime"] = {
+                    "step": 3,
                     "title": "Leaf Verdict: Severe Default Risk Signal",
-                    "condition": "Missed Payments > 2",
-                    "status": "REJECT / RESTRUCTURE",
-                    "detail": f"Critical risk: {int(missed)} late payments indicate acute default vulnerability.",
+                    "condition": "missed_payments_12m > 2",
+                    "formula": f"{int(missed)} missed > 2 -> CHRONIC DELINQUENCY",
+                    "status": "HIGH RISK",
+                    "detail": f"Chronic delinquency pattern: {int(missed)} missed payments signal severe cashflow impairment.",
+                    "inputs_used": {"Missed Count": f"{int(missed)} events", "Max Safe": "0-1"},
+                    "verdict_impact": "Significant default signal (>90%). Unsecured lending not recommended.",
                 }
 
         return {

@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>RiskLens — Minimalist Credit Risk & Decision Tree XAI</title>
+  <title>RiskLens — Animated Credit Risk Decision Flow & XAI</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -16,6 +16,50 @@
     <div class="u-tooltip-body" id="u-tooltip-body"></div>
     <div class="u-tooltip-meta" id="u-tooltip-meta"></div>
     <div class="u-tooltip-arrow"></div>
+  </div>
+
+  <!-- Interactive Node Inspector Modal / Slide-In Drawer -->
+  <div id="node-inspector-drawer" class="inspector-drawer hidden" aria-modal="true" role="dialog">
+    <div class="drawer-header">
+      <div class="drawer-header-left">
+        <span class="drawer-step-badge" id="insp-step-badge">STEP 1</span>
+        <h4 id="insp-title">Node Title</h4>
+      </div>
+      <button type="button" class="drawer-close-btn" id="insp-close-btn" aria-label="Close Inspector">✕</button>
+    </div>
+
+    <div class="drawer-body">
+      
+      <!-- Condition Box -->
+      <div class="insp-section">
+        <span class="insp-sec-label">CONDITION & FORMULA EVALUATED:</span>
+        <div class="insp-formula-box" id="insp-formula">
+          <!-- Formula expression -->
+        </div>
+        <p class="insp-condition-desc" id="insp-condition-desc"></p>
+      </div>
+
+      <!-- Ingested Inputs Table -->
+      <div class="insp-section">
+        <span class="insp-sec-label">INPUT VARIABLES AT THIS NODE:</span>
+        <div class="insp-inputs-grid" id="insp-inputs-grid">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Decision Rationale -->
+      <div class="insp-section">
+        <span class="insp-sec-label">UNDERWRITING IMPACT & OUTCOME:</span>
+        <div class="insp-verdict-box" id="insp-verdict">
+          <!-- Verdict explanation -->
+        </div>
+      </div>
+
+    </div>
+
+    <div class="drawer-footer">
+      <span class="drawer-tip">💡 Click any other node in the graph to inspect its processing logic</span>
+    </div>
   </div>
 
   <!-- Top Minimalist Brand Banner (Image 1 Style) -->
@@ -29,11 +73,11 @@
       </div>
       
       <div class="header-tags">
-        <span class="tech-chip" data-tip-title="Multi-Model Ensemble" data-tip-body="Scoring combines Random Forest, Gradient Boosting, Logistic Regression, and Neural Net." data-tip-meta="4 ML Engines Active">
+        <span class="tech-chip" data-tip-title="Multi-Model Ensemble" data-tip-body="Scoring blends Random Forest, Gradient Boosting, Logistic Regression, and Neural Net." data-tip-meta="4 ML Engines Active">
           <i></i> 4 ML Models
         </span>
-        <span class="tech-chip" data-tip-title="Decision Tree XAI" data-tip-body="Visualizing decision logic scattering from node to node like real decision trees." data-tip-meta="Full Traceability">
-          <i></i> Tree Scattering XAI
+        <span class="tech-chip" data-tip-title="Animated Decision Flow" data-tip-body="Watch every condition evaluate step-by-step with live delay pulses." data-tip-meta="Step-by-Step Execution">
+          <i></i> Animated Graph Flow
         </span>
       </div>
     </div>
@@ -46,25 +90,25 @@
       
       <!-- Box 1: Default Risk -->
       <div class="pastel-box box-risk" data-tip-title="Consensus Default Risk" data-tip-body="The blended likelihood that the borrower will fail to meet debt obligations, synthesized across all 4 machine learning models." data-tip-meta="Prime standard is under 15%">
-        <div class="pastel-value" id="top-score">1%</div>
+        <div class="pastel-value" id="top-score">0%</div>
         <div class="pastel-label">CALCULATED DEFAULT RISK</div>
       </div>
 
       <!-- Box 2: Indicative Sanction -->
       <div class="pastel-box box-sanction" data-tip-title="Indicative Sanction Limit" data-tip-body="Maximum recommended loan sanction calculated conservatively based on monthly disposable surplus cashflow." data-tip-meta="Cashflow buffer calibrated">
-        <div class="pastel-value" id="top-sanction">₹ 11.5L</div>
+        <div class="pastel-value" id="top-sanction">₹ 0</div>
         <div class="pastel-label">MAX INDICATIVE SANCTION</div>
       </div>
 
       <!-- Box 3: Model Consensus -->
       <div class="pastel-box box-consensus" data-tip-title="Model Agreement Rate" data-tip-body="Counts how many of the 4 independent algorithmic paradigms (Linear, Bagging, Boosting, Neural) reach the exact same risk tier." data-tip-meta="Convergence metric">
-        <div class="pastel-value" id="top-agreement">4 / 4</div>
+        <div class="pastel-value" id="top-agreement">-- / 4</div>
         <div class="pastel-label">MODELS IN AGREEMENT</div>
       </div>
 
       <!-- Box 4: Verdict Tier -->
       <div class="pastel-box box-verdict" data-tip-title="Underwriting Verdict" data-tip-body="Final credit underwriting categorization reflecting loan eligibility, interest rate tier, and required risk covenants." data-tip-meta="Policy action tier">
-        <div class="pastel-value" id="top-verdict">Prime Tier</div>
+        <div class="pastel-value" id="top-verdict">Awaiting Run</div>
         <div class="pastel-label">UNDERWRITING VERDICT</div>
       </div>
 
@@ -78,8 +122,8 @@
         
         <div class="input-card-top">
           <div>
-            <h3>Applicant Profile</h3>
-            <p>Select a preset or enter financial details</p>
+            <h3>Applicant Financial Profile</h3>
+            <p>Select preset or adjust numbers to animate the flow</p>
           </div>
         </div>
 
@@ -157,7 +201,7 @@
           </div>
 
           <button type="submit" class="submit-action-btn" id="submit-btn">
-            <span id="submit-text">Run Assessment</span>
+            <span id="submit-text">Run Assessment & Animate Flow</span>
             <span class="arrow-glyph">→</span>
           </button>
 
@@ -186,13 +230,13 @@
         <div class="explorer-nav">
           <div class="tab-pill-group">
             <button type="button" class="view-pill active" data-view="view-tree">
-              <span class="pill-dot"></span> Decision Tree (Node Scatter)
+              <span class="pill-dot"></span> Animated Decision Tree
             </button>
             <button type="button" class="view-pill" data-view="view-hub">
-              <span class="pill-dot"></span> Architecture Flow (Image 2 Hub)
+              <span class="pill-dot"></span> Architecture Hub Flow
             </button>
             <button type="button" class="view-pill" data-view="view-xai">
-              <span class="pill-dot"></span> XAI Waterfall & Feature Weights
+              <span class="pill-dot"></span> XAI Waterfall & Weights
             </button>
             <button type="button" class="view-pill" data-view="view-models">
               <span class="pill-dot"></span> Model Benchmarks
@@ -201,7 +245,31 @@
 
           <div class="interactive-hint">
             <span class="hint-pulse"></span>
-            <span>Hover over nodes & lines for instant explanations</span>
+            <span>Click any node to inspect processing logic</span>
+          </div>
+        </div>
+
+        <!-- Simulation & Speed Controller Bar -->
+        <div class="simulation-bar" id="sim-bar">
+          <div class="sim-left">
+            <div class="sim-status-chip" id="sim-status-chip">
+              <span class="sim-status-dot"></span>
+              <span class="sim-status-text" id="sim-status-text">Ready to animate</span>
+            </div>
+            <span class="sim-step-text" id="sim-step-text">Step 0 of 4</span>
+          </div>
+
+          <div class="sim-controls">
+            <button type="button" class="sim-ctrl-btn" id="replay-flow-btn" title="Replay Flow Animation">
+              <span>↺</span> Replay Animation
+            </button>
+            
+            <div class="speed-toggle-group">
+              <span class="speed-lbl">Speed:</span>
+              <button type="button" class="speed-btn" data-speed="slow">Slow</button>
+              <button type="button" class="speed-btn active" data-speed="normal">Normal</button>
+              <button type="button" class="speed-btn" data-speed="fast">Fast</button>
+            </div>
           </div>
         </div>
 
@@ -210,25 +278,15 @@
           
           <!-- VIEW 1: Decision Tree Branching Graph (Node Scattering) -->
           <div id="view-tree" class="view-panel active">
-            <div class="tree-canvas-header">
-              <div>
-                <h4>Interactive Decision Tree Scattering Graph</h4>
-                <p>Nodes scatter from Root condition into branch criteria. Glowing paths indicate the exact decision taken for this applicant.</p>
-              </div>
-              <div class="tree-legend">
-                <span class="leg-item"><i class="leg-dot active-dot"></i> Active Branch Taken</span>
-                <span class="leg-item"><i class="leg-dot dim-dot"></i> Inactive Alternate Path</span>
-              </div>
-            </div>
-
+            
             <!-- Dynamic Decision Tree SVG Viewport -->
             <div class="tree-viewport" id="tree-viewport-container">
-              <!-- SVG tree graph injected and animated by app.js -->
+              <!-- SVG tree graph injected, animated and interactive -->
             </div>
 
             <!-- Active Path Summary Bar -->
             <div class="path-summary-card" id="path-summary-card">
-              <span class="path-title">DECISION PATH TAKEN:</span>
+              <span class="path-title">DECISION SEQUENCE:</span>
               <div class="path-steps" id="path-steps-list">
                 <!-- Dynamically populated breadcrumb chips -->
               </div>
@@ -241,7 +299,7 @@
               
               <!-- Left Inputs Column -->
               <div class="hub-col hub-inputs">
-                <div class="hub-node" data-tip-title="Input 1: Income & Debt" data-tip-body="Verifiable monthly cashflow and existing debt servicing obligations." data-tip-meta="Level 1">
+                <div class="hub-node" id="hub-node-cashflow" data-tip-title="Input 1: Income & Debt" data-tip-body="Verifiable monthly cashflow and existing debt servicing obligations." data-tip-meta="Level 1">
                   <span class="hub-icon">💼</span>
                   <div class="hub-node-text">
                     <strong>Cashflow Ratios</strong>
@@ -249,7 +307,7 @@
                   </div>
                 </div>
 
-                <div class="hub-node" data-tip-title="Input 2: Loan Principal" data-tip-body="Requested credit principal normalized against annual borrower earning power." data-tip-meta="Level 1">
+                <div class="hub-node" id="hub-node-loan" data-tip-title="Input 2: Loan Principal" data-tip-body="Requested credit principal normalized against annual borrower earning power." data-tip-meta="Level 1">
                   <span class="hub-icon">🏛️</span>
                   <div class="hub-node-text">
                     <strong>Loan Leverage</strong>
@@ -257,7 +315,7 @@
                   </div>
                 </div>
 
-                <div class="hub-node" data-tip-title="Input 3: Credit Tenure" data-tip-body="Historical depth of active repayment seasoning across credit cycles." data-tip-meta="Level 1">
+                <div class="hub-node" id="hub-node-history" data-tip-title="Input 3: Credit Tenure" data-tip-body="Historical depth of active repayment seasoning across credit cycles." data-tip-meta="Level 1">
                   <span class="hub-icon">📜</span>
                   <div class="hub-node-text">
                     <strong>Credit Tenure</strong>
@@ -265,7 +323,7 @@
                   </div>
                 </div>
 
-                <div class="hub-node" data-tip-title="Input 4: Repayment Track" data-tip-body="Delinquency count in the last 12 months. Prime requires clean record." data-tip-meta="Level 1">
+                <div class="hub-node" id="hub-node-delinq" data-tip-title="Input 4: Repayment Track" data-tip-body="Delinquency count in the last 12 months. Prime requires clean record." data-tip-meta="Level 1">
                   <span class="hub-icon">⚡</span>
                   <div class="hub-node-text">
                     <strong>Delinquency Flag</strong>
@@ -276,7 +334,7 @@
 
               <!-- Center Hub Ring (Image 2 Center Ring Style) -->
               <div class="hub-col hub-center">
-                <div class="radial-hub-ring" data-tip-title="Ensemble Inference Hub" data-tip-body="Consensus convergence blending Random Forest, Gradient Boosting, Logistic Regression, and Neural Net." data-tip-meta="4 Algorithmic Paradigms">
+                <div class="radial-hub-ring" id="hub-radial-ring" data-tip-title="Ensemble Inference Hub" data-tip-body="Consensus convergence blending Random Forest, Gradient Boosting, Logistic Regression, and Neural Net." data-tip-meta="4 Algorithmic Paradigms">
                   <div class="hub-ring-svg-wrap">
                     <svg viewBox="0 0 160 160" class="ring-svg">
                       <circle cx="80" cy="80" r="70" class="ring-track"></circle>
@@ -416,8 +474,8 @@
 
   <footer class="minimal-foot">
     <div class="foot-inner">
-      <span>RiskLens Underwriting Intelligence • Scikit-Learn 1.9.1 • Decision Tree & XAI Engine</span>
-      <span>Hover over any term, ratio, or node for instant interactive explanations.</span>
+      <span>RiskLens Underwriting Intelligence • Scikit-Learn 1.9.1 • Animated Decision Flow</span>
+      <span>Click any node in the graph to inspect inputs, math formulas, and underwriting rationale.</span>
     </div>
   </footer>
 

@@ -1,10 +1,10 @@
 /**
- * RiskLens — Minimalist Credit Risk & Decision Tree Scattering XAI
+ * RiskLens — Animated Decision Flow & Node-Scattering Simulation Engine
  */
 (function() {
   'use strict';
 
-  // Preset financial profiles for rapid one-click testing
+  // Preset financial profiles
   const PRESETS = {
     prime: {
       monthly_income: 75000,
@@ -46,10 +46,20 @@
     maximumFractionDigits: 0
   });
 
+  // Animation speed mapping (milliseconds)
+  const SPEEDS = {
+    slow: 1100,
+    normal: 650,
+    fast: 220
+  };
+  let currentSpeed = 'normal';
+
   // State store
   let currentScoreData = null;
   let globalModelsData = null;
   let activeGlobalAlgo = 'consensus';
+  let isAnimating = false;
+  let activeAnimationTimer = null;
 
   // DOM Elements
   const tooltip = document.querySelector('#universal-tooltip');
@@ -57,7 +67,17 @@
   const tipBody = document.querySelector('#u-tooltip-body');
   const tipMeta = document.querySelector('#u-tooltip-meta');
 
-  // Top Pastel Boxes (Image 3 Style)
+  // Inspector Drawer
+  const inspectorDrawer = document.querySelector('#node-inspector-drawer');
+  const inspCloseBtn = document.querySelector('#insp-close-btn');
+  const inspStepBadge = document.querySelector('#insp-step-badge');
+  const inspTitle = document.querySelector('#insp-title');
+  const inspFormula = document.querySelector('#insp-formula');
+  const inspCondDesc = document.querySelector('#insp-condition-desc');
+  const inspInputsGrid = document.querySelector('#insp-inputs-grid');
+  const inspVerdict = document.querySelector('#insp-verdict');
+
+  // Top Pastel Boxes
   const topScore = document.querySelector('#top-score');
   const topSanction = document.querySelector('#top-sanction');
   const topAgreement = document.querySelector('#top-agreement');
@@ -71,6 +91,13 @@
   const valDti = document.querySelector('#val-dti');
   const valLti = document.querySelector('#val-lti');
   const valTrack = document.querySelector('#val-track');
+
+  // Simulation Controls
+  const simStatusChip = document.querySelector('#sim-status-chip');
+  const simStatusText = document.querySelector('#sim-status-text');
+  const simStepText = document.querySelector('#sim-step-text');
+  const replayBtn = document.querySelector('#replay-flow-btn');
+  const speedBtns = document.querySelectorAll('.speed-btn');
 
   // View Panels & Switchers
   const viewPills = document.querySelectorAll('.view-pill');
@@ -102,12 +129,14 @@
    */
   async function init() {
     setupUniversalTooltips();
+    setupInspectorDrawer();
     setupViewSwitching();
     setupPresetButtons();
+    setupSimulationControls();
     setupAlgoToggles();
     setupFormSubmission();
 
-    // Fetch static models & baseline
+    // Fetch baseline models
     try {
       const res = await fetch('/api/models');
       if (res.ok) {
@@ -118,7 +147,7 @@
       console.warn('Could not load static models metadata:', e);
     }
 
-    // Auto-evaluate prime preset on load
+    // Auto-run initial prime assessment on load
     await executeAssessment();
   }
 
@@ -179,6 +208,84 @@
       tooltip.style.left = `${Math.max(10, left)}px`;
       tooltip.style.top = `${Math.max(10, top)}px`;
     }
+  }
+
+  /**
+   * Inspector Drawer Setup
+   */
+  function setupInspectorDrawer() {
+    inspCloseBtn.addEventListener('click', () => {
+      inspectorDrawer.classList.add('hidden');
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') inspectorDrawer.classList.add('hidden');
+    });
+  }
+
+  /**
+   * Open Inspector for a given Node
+   */
+  function openNodeInspector(nodeId, nodeMeta, evalData) {
+    if (!evalData) {
+      evalData = {
+        title: nodeMeta.title,
+        step: 1,
+        condition: nodeMeta.cond,
+        formula: 'Evaluated based on applicant ratio thresholds',
+        detail: nodeMeta.cond,
+        inputs_used: { 'Status': 'Evaluated' },
+        verdict_impact: 'Condition determines the active decision branch taken.'
+      };
+    }
+
+    inspStepBadge.textContent = `STEP ${evalData.step || 1}`;
+    inspTitle.textContent = evalData.title || nodeMeta.title;
+    inspFormula.textContent = evalData.formula || evalData.condition;
+    inspCondDesc.textContent = evalData.detail || nodeMeta.cond;
+
+    // Render Ingested Inputs Table
+    inspInputsGrid.innerHTML = '';
+    const inputsMap = evalData.inputs_used || {};
+    Object.entries(inputsMap).forEach(([k, v]) => {
+      const item = document.createElement('div');
+      item.className = 'insp-input-item';
+      item.innerHTML = `
+        <span>${k}</span>
+        <strong>${v}</strong>
+      `;
+      inspInputsGrid.appendChild(item);
+    });
+
+    // Render Impact
+    inspVerdict.textContent = evalData.verdict_impact || 'Path determined.';
+    inspVerdict.className = 'insp-verdict-box';
+    if (evalData.status === 'WARNING' || evalData.status === 'REVIEW') {
+      inspVerdict.classList.add('warning');
+    } else if (evalData.status === 'HIGH RISK') {
+      inspVerdict.classList.add('risk');
+    }
+
+    inspectorDrawer.classList.remove('hidden');
+  }
+
+  /**
+   * Simulation & Speed Controls
+   */
+  function setupSimulationControls() {
+    replayBtn.addEventListener('click', () => {
+      if (currentScoreData && currentScoreData.tree_path) {
+        runAnimatedFlow(currentScoreData);
+      }
+    });
+
+    speedBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        speedBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentSpeed = btn.getAttribute('data-speed') || 'normal';
+      });
+    });
   }
 
   /**
@@ -253,13 +360,13 @@
   async function executeAssessment() {
     formError.textContent = '';
     submitBtn.disabled = true;
-    submitText.textContent = 'Evaluating Decision Nodes…';
+    submitText.textContent = 'Simulating Decision Stream…';
 
     try {
       const formData = new FormData(form);
       const payload = Object.fromEntries(formData.entries());
 
-      // Update quick ratio chips immediately
+      // Live update quick ratios
       const inc = parseFloat(payload.monthly_income) || 1;
       const debt = parseFloat(payload.monthly_debt_payments) || 0;
       const loan = parseFloat(payload.loan_amount) || 0;
@@ -284,104 +391,193 @@
       }
 
       currentScoreData = data;
-      renderAll(data);
+
+      // 1. Static companion views update immediately
+      renderArchitectureHub(data.inputs, data.consensus, data.models);
+      renderWaterfall(data.xai.waterfall);
+      renderDriverChips(data.xai.top_risk_driver, data.xai.top_mitigant);
+      renderGlobalFeatureImportance(data.xai.global_importance, activeGlobalAlgo);
+      renderModelCards(data.models);
+      renderBenchmarkTable(data.models);
+
+      // 2. Trigger Heavily Animated Decision Flow with Delays!
+      await runAnimatedFlow(data);
 
     } catch (err) {
       formError.textContent = err.message;
     } finally {
       submitBtn.disabled = false;
-      submitText.textContent = 'Run Assessment';
+      submitText.textContent = 'Run Assessment & Animate Flow';
     }
   }
 
   /**
-   * Master Render Coordinator
+   * Delay Helper
    */
-  function renderAll(data) {
-    const { consensus, models, tree_path, xai, inputs } = data;
+  const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-    // 1. Top Pastel Metric Cards (Image 3 Style)
-    renderTopPastelCards(consensus);
+  /**
+   * Animated Number Count-Up Odometer
+   */
+  function animateValue(elem, start, end, duration, suffix = '') {
+    const startTime = performance.now();
+    const isCurrency = suffix === '₹';
 
-    // 2. Decision Tree Scattering Graph (Node-to-Node Scatter)
-    renderDecisionTreeGraph(tree_path, consensus);
+    function update(now) {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease Out Quartic
+      const ease = 1 - Math.pow(1 - progress, 4);
+      const current = Math.round(start + (end - start) * ease);
 
-    // 3. Architecture Hub View (Image 2 Reference Style)
-    renderArchitectureHub(inputs, consensus, models);
+      if (isCurrency) {
+        elem.textContent = inrFormatter.format(current).replace('₹', '₹ ');
+      } else {
+        elem.textContent = `${current}${suffix}`;
+      }
 
-    // 4. Explainable AI (Waterfall + Global Gini Weights)
-    renderWaterfall(xai.waterfall);
-    renderDriverChips(xai.top_risk_driver, xai.top_mitigant);
-    renderGlobalFeatureImportance(xai.global_importance, activeGlobalAlgo);
-
-    // 5. Multi-Model Benchmark Cards & Table
-    renderModelCards(models);
-    renderBenchmarkTable(models);
+      if (progress < 1) {
+        requestAnimationFrame(update);
+      }
+    }
+    requestAnimationFrame(update);
   }
 
   /**
-   * Render Top 4 Pastel Metric Boxes (Reference Image 3 Style)
+   * The Animated Graph Simulation Engine
+   * Animates step-by-step from root to leaf with live particle pulses, node glows, and delays!
    */
-  function renderTopPastelCards(consensus) {
-    topScore.textContent = `${consensus.risk_score}%`;
-    topSanction.textContent = `${inrFormatter.format(consensus.sanction_high).replace('₹', '₹ ')}`;
+  async function runAnimatedFlow(data) {
+    if (isAnimating) return;
+    isAnimating = true;
+
+    const { tree_path, consensus } = data;
+    const pathNodes = tree_path.path_nodes || [];
+    const pathEdges = tree_path.path_edges || [];
+    const evals = tree_path.evaluations || {};
+
+    const delayMs = SPEEDS[currentSpeed] || 650;
+
+    // Reset Top Pastel Cards to 0 before count-up
+    topScore.textContent = '...';
+    topSanction.textContent = '...';
+    topAgreement.textContent = '...';
+    topVerdict.textContent = 'Evaluating...';
+
+    // Build the SVG base DOM
+    renderDecisionTreeDOM(tree_path);
+
+    // Update simulation status bar
+    simStatusChip.classList.add('animating');
+    simStatusText.textContent = 'Simulating Decision Stream…';
+    simStepText.textContent = `Step 0 of ${pathNodes.length}`;
+
+    // Reset all nodes and edges to idle
+    document.querySelectorAll('.tree-node-group').forEach(n => {
+      n.classList.remove('active', 'processing', 'resolved', 'warning', 'risk');
+    });
+    document.querySelectorAll('.tree-edge').forEach(e => {
+      e.classList.remove('active', 'animating');
+    });
+
+    // Step-by-Step Animation Loop
+    for (let i = 0; i < pathNodes.length; i++) {
+      const nodeId = pathNodes[i];
+      const nodeElem = document.querySelector(`#node-g-${nodeId}`);
+      const evalData = evals[nodeId] || {};
+
+      simStepText.textContent = `Step ${i + 1} of ${pathNodes.length}`;
+      simStatusText.textContent = `Evaluating: ${evalData.title || nodeId}…`;
+
+      // 1. Highlight Node in Processing / Evaluating state (Blue Glow + Ripple)
+      if (nodeElem) {
+        nodeElem.classList.add('processing');
+      }
+
+      // Breadcrumb chip activation
+      const chipElem = document.querySelector(`#chip-step-${nodeId}`);
+      if (chipElem) {
+        chipElem.classList.add('animating');
+      }
+
+      // Allow visual delay for user to inspect
+      await wait(delayMs);
+
+      // 2. Resolve Node to Final Status (Emerald/Amber/Crimson)
+      if (nodeElem) {
+        nodeElem.classList.remove('processing');
+        nodeElem.classList.add('active', 'resolved');
+        if (evalData.status === 'WARNING' || evalData.status === 'REVIEW') {
+          nodeElem.classList.add('warning');
+        } else if (evalData.status === 'HIGH RISK') {
+          nodeElem.classList.add('risk');
+        }
+      }
+
+      if (chipElem) {
+        chipElem.classList.remove('animating');
+        chipElem.classList.add('active');
+      }
+
+      // 3. Fire Laser / Particle Stream to Next Node along the Edge
+      if (i < pathEdges.length) {
+        const edgeId = pathEdges[i];
+        const edgeElem = document.querySelector(`#edge-p-${edgeId}`);
+        if (edgeElem) {
+          edgeElem.classList.add('active', 'animating');
+        }
+        await wait(Math.round(delayMs * 0.65));
+      }
+    }
+
+    // Phase 4: Final Arrival & Top Metric Cards Count-Up
+    simStatusChip.classList.remove('animating');
+    simStatusText.textContent = 'Decision Flow Complete ✓';
+
+    animateValue(topScore, 0, consensus.risk_score, 800, '%');
+    animateValue(topSanction, 0, consensus.sanction_high, 900, '₹');
     topAgreement.textContent = consensus.agreement ? consensus.agreement.split(' ')[0] : '4 / 4';
     topVerdict.textContent = consensus.band;
+
+    isAnimating = false;
   }
 
   /**
-   * Render Interactive Decision Tree Scattering Graph (Node Scatter)
-   * Visually scatters from root node into criteria nodes and leaves!
+   * Render SVG Tree Base DOM
    */
-  function renderDecisionTreeGraph(treePath, consensus) {
+  function renderDecisionTreeDOM(treePath) {
     treeContainer.innerHTML = '';
     pathStepsList.innerHTML = '';
     if (!treePath) return;
 
-    const activeNodes = new Set(treePath.path_nodes || []);
-    const activeEdges = new Set(treePath.path_edges || []);
     const evals = treePath.evaluations || {};
-
     const svgWidth = 920;
     const svgHeight = 440;
 
-    // Node layout positions (x, y)
     const NODES = {
-      root: { x: 460, y: 35, title: 'Root: Financial Ingestion', cond: 'Applicant Parameters Ingested', badge: 'INPUT' },
-      
-      // Level 1 Split: Missed payments
+      root: { x: 460, y: 35, title: 'Root: Ingestion', cond: 'Ingest financial metrics', badge: 'INPUT' },
       node_clean: { x: 230, y: 135, title: 'Clean Repayment Track', cond: 'Missed Payments == 0', badge: 'PASS' },
       node_delinquent: { x: 690, y: 135, title: 'Delinquency Track', cond: 'Missed Payments > 0', badge: 'RISK' },
-
-      // Level 2 Split: Clean path -> DTI; Delinquent path -> Delinquency severity
       node_low_dti: { x: 120, y: 245, title: 'Low Debt-to-Income', cond: 'DTI ≤ 36.0%', badge: 'SAFE' },
       node_high_dti: { x: 340, y: 245, title: 'Elevated DTI', cond: 'DTI > 36.0%', badge: 'STRAINED' },
       node_mild_delinq: { x: 580, y: 245, title: 'Mild Delinquency', cond: 'Missed Payments ≤ 2', badge: 'RECOVER' },
-
-      // Level 3 Terminal Leaves
       leaf_prime: { x: 60, y: 360, title: 'Prime Approval', cond: 'LTI ≤ 1.50x — Top Tier', badge: 'PRIME', leaf: true },
       leaf_standard: { x: 230, y: 360, title: 'Standard Solvency', cond: 'Standard Lending Tier', badge: 'STANDARD', leaf: true },
       leaf_strained: { x: 440, y: 360, title: 'Conditional Review', cond: 'High Debt / Delinquency', badge: 'REVIEW', leaf: true },
       leaf_subprime: { x: 740, y: 360, title: 'High Default Risk', cond: 'Critical Default Signal', badge: 'SUBPRIME', leaf: true },
     };
 
-    // Edge definitions connecting nodes
     const EDGES = [
       { id: 'e_root_clean', from: 'root', to: 'node_clean', label: 'Clean (0)' },
       { id: 'e_root_delinq', from: 'root', to: 'node_delinquent', label: 'Missed (>0)' },
-      
       { id: 'e_clean_low_dti', from: 'node_clean', to: 'node_low_dti', label: 'DTI ≤ 36%' },
       { id: 'e_clean_high_dti', from: 'node_clean', to: 'node_high_dti', label: 'DTI > 36%' },
-
       { id: 'e_delinq_mild', from: 'node_delinquent', to: 'node_mild_delinq', label: 'Missed ≤ 2' },
       { id: 'e_delinq_severe', from: 'node_delinquent', to: 'leaf_subprime', label: 'Missed > 2' },
-
       { id: 'e_low_dti_prime', from: 'node_low_dti', to: 'leaf_prime', label: 'LTI ≤ 1.5x' },
       { id: 'e_low_dti_std', from: 'node_low_dti', to: 'leaf_standard', label: 'LTI > 1.5x' },
-
       { id: 'e_high_dti_std', from: 'node_high_dti', to: 'leaf_standard', label: 'History ≥ 5y' },
       { id: 'e_high_dti_strain', from: 'node_high_dti', to: 'leaf_strained', label: 'History < 5y' },
-
       { id: 'e_mild_strain', from: 'node_mild_delinq', to: 'leaf_strained', label: 'DTI ≤ 42%' },
       { id: 'e_mild_subprime', from: 'node_mild_delinq', to: 'leaf_subprime', label: 'DTI > 42%' },
     ];
@@ -390,34 +586,32 @@
     svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
     svg.setAttribute('class', 'tree-svg');
 
-    // 1. Draw Edges first so nodes render on top
+    // 1. Draw Edges
     EDGES.forEach(edge => {
       const fromNode = NODES[edge.from];
       const toNode = NODES[edge.to];
       if (!fromNode || !toNode) return;
 
       const x1 = fromNode.x;
-      const y1 = fromNode.y + 24; // bottom of parent
+      const y1 = fromNode.y + 24;
       const x2 = toNode.x;
-      const y2 = toNode.y - 24; // top of child
+      const y2 = toNode.y - 24;
 
-      // Clean orthogonal/curved bezier branch
       const midY = (y1 + y2) / 2;
       const pathD = `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
 
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('id', `edge-p-${edge.id}`);
       path.setAttribute('d', pathD);
-      const isActive = activeEdges.has(edge.id);
-      path.setAttribute('class', `tree-edge ${isActive ? 'active' : ''}`);
+      path.setAttribute('class', 'tree-edge');
 
-      // Hover metadata for edge
-      path.setAttribute('data-tip-title', `Branch Condition: ${edge.label}`);
-      path.setAttribute('data-tip-body', `Connects ${fromNode.title} to ${toNode.title}.`);
-      path.setAttribute('data-tip-meta', isActive ? 'ACTIVE PATH TAKEN' : 'INACTIVE ALTERNATE PATH');
+      path.setAttribute('data-tip-title', `Condition: ${edge.label}`);
+      path.setAttribute('data-tip-body', `Branch connecting ${fromNode.title} to ${toNode.title}.`);
+      path.setAttribute('data-tip-meta', 'BRANCH CONNECTOR');
 
       svg.appendChild(path);
 
-      // Edge condition pill label
+      // Edge label
       const midX = (x1 + x2) / 2;
       const lblText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       lblText.setAttribute('x', midX);
@@ -425,8 +619,8 @@
       lblText.setAttribute('text-anchor', 'middle');
       lblText.setAttribute('font-size', '8.5');
       lblText.setAttribute('font-family', 'JetBrains Mono');
-      lblText.setAttribute('fill', isActive ? '#059669' : '#94a3b8');
-      lblText.setAttribute('font-weight', isActive ? '700' : '500');
+      lblText.setAttribute('fill', '#94a3b8');
+      lblText.setAttribute('font-weight', '600');
       lblText.textContent = edge.label;
       svg.appendChild(lblText);
     });
@@ -436,18 +630,23 @@
     const nodeH = 46;
 
     Object.entries(NODES).forEach(([nodeId, node]) => {
-      const isActive = activeNodes.has(nodeId);
       const evalData = evals[nodeId] || {};
 
       const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      g.setAttribute('class', `tree-node-group ${isActive ? 'active' : ''}`);
+      g.setAttribute('id', `node-g-${nodeId}`);
+      g.setAttribute('class', 'tree-node-group');
 
-      // Hover tooltip for node
+      // Click-to-Inspect Event
+      g.addEventListener('click', () => {
+        openNodeInspector(nodeId, node, evalData);
+      });
+
+      // Hover Tooltip
       g.setAttribute('data-tip-title', evalData.title || node.title);
-      g.setAttribute('data-tip-body', evalData.detail || node.cond);
-      g.setAttribute('data-tip-meta', isActive ? 'STATUS: EVALUATED & TAKEN' : 'STATUS: NOT TAKEN');
+      g.setAttribute('data-tip-body', `${evalData.detail || node.cond} (Click to inspect formula)`);
+      g.setAttribute('data-tip-meta', 'CLICK TO INSPECT NODE LOGIC');
 
-      // Node box rect
+      // Rect
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       rect.setAttribute('x', node.x - nodeW / 2);
       rect.setAttribute('y', node.y - nodeH / 2);
@@ -456,8 +655,8 @@
       rect.setAttribute('class', 'node-box');
       g.appendChild(rect);
 
-      // Badge rect (top-right pill)
-      const badgeW = 42;
+      // Badge rect
+      const badgeW = 44;
       const badgeH = 14;
       const badgeRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       badgeRect.setAttribute('x', node.x + nodeW / 2 - badgeW - 6);
@@ -476,7 +675,7 @@
       badgeTxt.textContent = evalData.status || node.badge;
       g.appendChild(badgeTxt);
 
-      // Title text
+      // Title
       const titleTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       titleTxt.setAttribute('x', node.x - nodeW / 2 + 8);
       titleTxt.setAttribute('y', node.y - nodeH / 2 + 16);
@@ -484,7 +683,7 @@
       titleTxt.textContent = node.title.length > 17 ? node.title.substring(0, 16) + '…' : node.title;
       g.appendChild(titleTxt);
 
-      // Condition text
+      // Condition
       const condTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       condTxt.setAttribute('x', node.x - nodeW / 2 + 8);
       condTxt.setAttribute('y', node.y + nodeH / 2 - 10);
@@ -497,16 +696,21 @@
 
     treeContainer.appendChild(svg);
 
-    // 3. Render Breadcrumbs in path summary bar
+    // 3. Render Breadcrumbs
     treePath.path_nodes.forEach((nodeId, idx) => {
       const node = NODES[nodeId];
       if (!node) return;
       const chip = document.createElement('span');
-      chip.className = 'step-chip active';
+      chip.id = `chip-step-${nodeId}`;
+      chip.className = 'step-chip';
       chip.textContent = node.title;
       chip.setAttribute('data-tip-title', node.title);
-      chip.setAttribute('data-tip-body', evals[nodeId] ? evals[nodeId].detail : node.cond);
-      chip.setAttribute('data-tip-meta', `Step ${idx + 1} of Tree Path`);
+      chip.setAttribute('data-tip-body', 'Click to inspect this evaluation step');
+      chip.setAttribute('data-tip-meta', `Step ${idx + 1}`);
+
+      chip.addEventListener('click', () => {
+        openNodeInspector(nodeId, node, evals[nodeId]);
+      });
 
       pathStepsList.appendChild(chip);
 
@@ -574,7 +778,6 @@
     svg.style.width = '100%';
     svg.style.height = 'auto';
 
-    // Horizontal grid lines
     [0, 25, 50, 75, 100].forEach(tick => {
       const y = margin.top + yScale(tick);
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -605,7 +808,7 @@
       if (step.type === 'baseline' || step.type === 'final') {
         barTop = margin.top + yScale(step.value);
         barBottom = margin.top + yScale(0);
-        color = '#0f172a'; // Ink dark
+        color = '#0f172a';
       } else {
         const prevStepVal = steps[idx - 1] ? steps[idx - 1].value : step.value;
         const currentVal = step.value;
