@@ -292,6 +292,21 @@
               <!-- SVG tree graph injected, animated and interactive -->
             </div>
 
+            <!-- Floating Pan & Zoom Canvas Controls (Excalidraw / Figma Style) -->
+            <div class="canvas-floating-toolbar">
+              <div class="canvas-nav-group">
+                <button type="button" class="canvas-tool-btn" id="canvas-zoom-in" title="Zoom In">+</button>
+                <span class="canvas-zoom-badge" id="canvas-zoom-val">100%</span>
+                <button type="button" class="canvas-tool-btn" id="canvas-zoom-out" title="Zoom Out">−</button>
+                <button type="button" class="canvas-tool-btn" id="canvas-zoom-reset" title="Reset View (Fit 100%)">Fit View</button>
+                <button type="button" class="canvas-tool-btn" id="canvas-layout-reset" title="Reset Card Positions">Reset Layout</button>
+              </div>
+              <div class="canvas-drag-hint">
+                <span class="drag-icon">🖐</span>
+                <span>Drag canvas to pan • Drag cards to reposition</span>
+              </div>
+            </div>
+
             <!-- Active Path Summary Bar -->
             <div class="path-summary-card" id="path-summary-card">
               <span class="path-title">DECISION SEQUENCE:</span>

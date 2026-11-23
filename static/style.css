@@ -987,27 +987,115 @@ body {
   display: block;
 }
 
-/* VIEW 1: Decision Tree Scattering Graph */
+/* VIEW 1: Decision Tree Scattering Graph Viewport with Pan & Drag */
 .tree-viewport {
   width: 100%;
-  overflow-x: auto;
-  min-height: 410px;
+  height: 560px;
+  overflow: hidden;
+  position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
+  cursor: grab;
+  user-select: none;
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  background: transparent;
+}
+
+.tree-viewport.panning {
+  cursor: grabbing !important;
 }
 
 .tree-svg {
   width: 100%;
-  max-width: 920px;
-  height: auto;
+  height: 100%;
+  display: block;
+}
+
+/* Floating Pan & Zoom Toolbar (Excalidraw / Figma Style) */
+.canvas-floating-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-sm);
+}
+
+.canvas-nav-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.canvas-tool-btn {
+  background: #ffffff;
+  border: 1px solid var(--border-line);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ink-700);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.canvas-tool-btn:hover {
+  background: var(--bg-subtle);
+  border-color: var(--ink-900);
+  color: var(--ink-900);
+}
+
+.canvas-zoom-badge {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  color: var(--ink-700);
+  padding: 0 6px;
+  min-width: 44px;
+  text-align: center;
+}
+
+.canvas-drag-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--ink-500);
+}
+
+.drag-icon {
+  font-size: 13px;
+}
+
+.tree-node-group {
+  cursor: grab;
+  user-select: none;
+}
+
+.tree-node-group:hover .node-box {
+  filter: drop-shadow(0 6px 14px rgba(15, 23, 42, 0.12));
+}
+
+.tree-node-group.dragging {
+  cursor: grabbing !important;
+}
+
+.tree-node-group.dragging .node-box {
+  stroke: var(--ink-900) !important;
+  stroke-width: 2.5 !important;
+  filter: drop-shadow(0 14px 28px rgba(15, 23, 42, 0.25)) !important;
 }
 
 /* Excalidraw-Style Rectangular Nodes & Edge Elements */
 .excalidraw-svg {
   width: 100%;
   max-width: 1200px;
-  height: auto;
+  height: 100%;
 }
 
 .tree-edge {
@@ -1037,15 +1125,6 @@ body {
   stroke: #e2e8f0;
   stroke-width: 1;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.05));
-}
-
-.tree-node-group {
-  cursor: pointer;
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.tree-node-group:hover {
-  transform: translateY(-2px) scale(1.015);
 }
 
 /* Excalidraw Rectangular Card Box */

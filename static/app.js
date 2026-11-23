@@ -129,6 +129,141 @@
   const blueprintCanvas = document.querySelector('.blueprint-canvas');
   const themeBtns = document.querySelectorAll('.theme-btn');
 
+  // Canvas Pan & Zoom State
+  let panX = 0;
+  let panY = 0;
+  let zoomScale = 1.0;
+  let isPanningCanvas = false;
+  let panStartMouseX = 0;
+  let panStartMouseY = 0;
+
+  // Node Drag State
+  let isDraggingNode = false;
+  let draggedNodeId = null;
+  let nodeStartPosX = 0;
+  let nodeStartPosY = 0;
+  let nodeDragStartMouseX = 0;
+  let nodeDragStartMouseY = 0;
+  let hasMovedNode = false;
+
+  // Node Box Dimensions: Generously sized Excalidraw cards
+  const nodeW = 230;
+  const nodeH = 88;
+
+  // Default Node Layout Positions (x, y) with generous spacing to prevent overlap/clipping
+  const DEFAULT_NODES = {
+    root: {
+      x: 600, y: 60,
+      title: 'Applicant Ingestion',
+      stepTag: 'STEP 1 • INPUT',
+      cond: 'Parse 5 financial ratios',
+      evalRule: 'DTI, LTI, APR, History, Missed',
+      badge: 'INPUT'
+    },
+    node_clean: {
+      x: 340, y: 200,
+      title: 'Clean Repayment Track',
+      stepTag: 'STEP 2 • CRITERIA',
+      cond: 'Missed Payments == 0',
+      evalRule: '0 missed payments in 12m',
+      badge: 'PASS'
+    },
+    node_delinquent: {
+      x: 870, y: 200,
+      title: 'Delinquency Track',
+      stepTag: 'STEP 2 • WARNING',
+      cond: 'Missed Payments > 0',
+      evalRule: 'Active late payments detected',
+      badge: 'WARNING'
+    },
+    node_low_dti: {
+      x: 200, y: 355,
+      title: 'Low Debt-to-Income',
+      stepTag: 'STEP 3 • CASHFLOW',
+      cond: 'DTI ≤ 36.0%',
+      evalRule: 'Monthly obligations < 36%',
+      badge: 'SAFE'
+    },
+    node_high_dti: {
+      x: 480, y: 355,
+      title: 'Elevated DTI',
+      stepTag: 'STEP 3 • BURDEN',
+      cond: 'DTI > 36.0%',
+      evalRule: 'Testing tenure compensation',
+      badge: 'STRAINED'
+    },
+    node_mild_delinq: {
+      x: 780, y: 355,
+      title: 'Mild Delinquency',
+      stepTag: 'STEP 3 • RECOVERY',
+      cond: 'Missed Payments ≤ 2',
+      evalRule: 'Testing cashflow recovery',
+      badge: 'RECOVERY'
+    },
+    leaf_prime: {
+      x: 150, y: 520,
+      title: 'Prime Tier Approval',
+      stepTag: 'STEP 4 • FINAL VERDICT',
+      cond: 'LTI ≤ 1.50x — Top Tier',
+      evalRule: 'Preferred Rate & Max Sanction',
+      badge: 'PRIME',
+      leaf: true
+    },
+    leaf_standard: {
+      x: 420, y: 520,
+      title: 'Standard Solvency',
+      stepTag: 'STEP 4 • FINAL VERDICT',
+      cond: 'Standard Amortization',
+      evalRule: 'Manageable Risk Profile',
+      badge: 'STANDARD',
+      leaf: true
+    },
+    leaf_strained: {
+      x: 710, y: 520,
+      title: 'Conditional Review',
+      stepTag: 'STEP 4 • FINAL VERDICT',
+      cond: 'Review / Mitigants Needed',
+      evalRule: 'Restructuring / Co-borrower',
+      badge: 'REVIEW',
+      leaf: true
+    },
+    leaf_subprime: {
+      x: 1010, y: 520,
+      title: 'High Default Risk',
+      stepTag: 'STEP 4 • FINAL VERDICT',
+      cond: 'Critical Default Vulnerability',
+      evalRule: 'Unsecured Credit Declined',
+      badge: 'SUBPRIME',
+      leaf: true
+    }
+  };
+
+  const TREE_EDGES = [
+    { id: 'e_root_clean', from: 'root', to: 'node_clean', label: 'Clean Track (0 missed)' },
+    { id: 'e_root_delinq', from: 'root', to: 'node_delinquent', label: 'Delinquent (>0 missed)' },
+    { id: 'e_clean_low_dti', from: 'node_clean', to: 'node_low_dti', label: 'DTI ≤ 36% (Safe)' },
+    { id: 'e_clean_high_dti', from: 'node_clean', to: 'node_high_dti', label: 'DTI > 36% (Elevated)' },
+    { id: 'e_delinq_mild', from: 'node_delinquent', to: 'node_mild_delinq', label: 'Missed ≤ 2 (Isolated)' },
+    { id: 'e_delinq_severe', from: 'node_delinquent', to: 'leaf_subprime', label: 'Missed > 2 (Chronic)' },
+    { id: 'e_low_dti_prime', from: 'node_low_dti', to: 'leaf_prime', label: 'LTI ≤ 1.5x (Optimal)' },
+    { id: 'e_low_dti_std', from: 'node_low_dti', to: 'leaf_standard', label: 'LTI > 1.5x (Large Loan)' },
+    { id: 'e_high_dti_std', from: 'node_high_dti', to: 'leaf_standard', label: 'History ≥ 5y (Seasoned)' },
+    { id: 'e_high_dti_strain', from: 'node_high_dti', to: 'leaf_strained', label: 'History < 5y (Short)' },
+    { id: 'e_mild_strain', from: 'node_mild_delinq', to: 'leaf_strained', label: 'DTI ≤ 42% (Buffer)' },
+    { id: 'e_mild_subprime', from: 'node_mild_delinq', to: 'leaf_subprime', label: 'DTI > 42% (Overburdened)' }
+  ];
+
+  // Global reference to active tree graph nodes & edges
+  let currentTreeNodes = {};
+  let currentTreeEdges = [...TREE_EDGES];
+
+  // Canvas floating toolbar controls
+  const canvasZoomIn = document.querySelector('#canvas-zoom-in');
+  const canvasZoomOut = document.querySelector('#canvas-zoom-out');
+  const canvasZoomReset = document.querySelector('#canvas-zoom-reset');
+  const canvasLayoutReset = document.querySelector('#canvas-layout-reset');
+  const canvasZoomVal = document.querySelector('#canvas-zoom-val');
+
   /**
    * Application Initialization
    */
@@ -138,6 +273,7 @@
     setupViewSwitching();
     setupPresetButtons();
     setupSimulationControls();
+    setupCanvasPanZoomControls();
     setupThemeToggles();
     setupAlgoToggles();
     setupFormSubmission();
@@ -160,6 +296,266 @@
 
     // Auto-run initial prime assessment on load
     await executeAssessment();
+  }
+
+  /**
+   * Apply Pan & Zoom Transform to Canvas Viewport Layer
+   */
+  function applyCanvasTransform() {
+    const layer = document.querySelector('#tree-canvas-layer');
+    if (layer) {
+      layer.setAttribute('transform', `translate(${panX}, ${panY}) scale(${zoomScale})`);
+    }
+    if (canvasZoomVal) {
+      canvasZoomVal.textContent = `${Math.round(zoomScale * 100)}%`;
+    }
+  }
+
+  /**
+   * Start dragging a node
+   */
+  function startNodeDrag(nodeId, clientX, clientY) {
+    if (!currentTreeNodes[nodeId]) return;
+    isDraggingNode = true;
+    draggedNodeId = nodeId;
+    hasMovedNode = false;
+
+    nodeStartPosX = currentTreeNodes[nodeId].x;
+    nodeStartPosY = currentTreeNodes[nodeId].y;
+    nodeDragStartMouseX = clientX;
+    nodeDragStartMouseY = clientY;
+
+    const nodeGroup = document.querySelector(`#node-g-${nodeId}`);
+    if (nodeGroup) {
+      nodeGroup.classList.add('dragging');
+    }
+  }
+
+  /**
+   * Setup Canvas Pan, Zoom and Toolbar Buttons
+   */
+  function setupCanvasPanZoomControls() {
+    if (canvasZoomIn) {
+      canvasZoomIn.addEventListener('click', () => {
+        zoomScale = Math.min(2.5, zoomScale * 1.2);
+        applyCanvasTransform();
+      });
+    }
+    if (canvasZoomOut) {
+      canvasZoomOut.addEventListener('click', () => {
+        zoomScale = Math.max(0.4, zoomScale / 1.2);
+        applyCanvasTransform();
+      });
+    }
+    if (canvasZoomReset) {
+      canvasZoomReset.addEventListener('click', () => {
+        panX = 0;
+        panY = 0;
+        zoomScale = 1.0;
+        applyCanvasTransform();
+      });
+    }
+    if (canvasLayoutReset) {
+      canvasLayoutReset.addEventListener('click', () => {
+        Object.keys(DEFAULT_NODES).forEach(nodeId => {
+          if (currentTreeNodes[nodeId]) {
+            currentTreeNodes[nodeId].x = DEFAULT_NODES[nodeId].x;
+            currentTreeNodes[nodeId].y = DEFAULT_NODES[nodeId].y;
+            const nodeGroup = document.querySelector(`#node-g-${nodeId}`);
+            if (nodeGroup) {
+              nodeGroup.setAttribute('transform', `translate(${DEFAULT_NODES[nodeId].x}, ${DEFAULT_NODES[nodeId].y})`);
+            }
+            updateConnectedEdges(nodeId);
+          }
+        });
+      });
+    }
+
+    // Canvas Pan (Drag Background)
+    if (treeContainer) {
+      treeContainer.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.tree-node-group')) return; // Handled by node drag
+        isPanningCanvas = true;
+        panStartMouseX = e.clientX - panX;
+        panStartMouseY = e.clientY - panY;
+        treeContainer.classList.add('panning');
+      });
+
+      // Mouse Wheel Zoom centered on cursor
+      treeContainer.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const factor = e.deltaY < 0 ? 1.1 : 0.9;
+        const newZoom = Math.max(0.4, Math.min(2.5, zoomScale * factor));
+
+        const rect = treeContainer.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        panX = mouseX - (mouseX - panX) * (newZoom / zoomScale);
+        panY = mouseY - (mouseY - panY) * (newZoom / zoomScale);
+        zoomScale = newZoom;
+
+        applyCanvasTransform();
+      }, { passive: false });
+
+      // Touch Panning for Mobile / Tablet
+      treeContainer.addEventListener('touchstart', (e) => {
+        if (e.touches && e.touches.length === 1) {
+          if (e.target.closest('.tree-node-group')) return;
+          isPanningCanvas = true;
+          panStartMouseX = e.touches[0].clientX - panX;
+          panStartMouseY = e.touches[0].clientY - panY;
+          treeContainer.classList.add('panning');
+        }
+      }, { passive: true });
+    }
+
+    // Global Mouse Move & Mouse Up for Canvas Panning and Node Dragging
+    window.addEventListener('mousemove', (e) => {
+      // 1. Canvas Panning
+      if (isPanningCanvas) {
+        panX = e.clientX - panStartMouseX;
+        panY = e.clientY - panStartMouseY;
+        applyCanvasTransform();
+        return;
+      }
+
+      // 2. Node Drag & Drop
+      if (isDraggingNode && draggedNodeId && currentTreeNodes[draggedNodeId]) {
+        const dx = (e.clientX - nodeDragStartMouseX) / zoomScale;
+        const dy = (e.clientY - nodeDragStartMouseY) / zoomScale;
+
+        if (Math.hypot(dx, dy) > 4) {
+          hasMovedNode = true;
+        }
+
+        const newX = Math.round(nodeStartPosX + dx);
+        const newY = Math.round(nodeStartPosY + dy);
+
+        currentTreeNodes[draggedNodeId].x = newX;
+        currentTreeNodes[draggedNodeId].y = newY;
+
+        const nodeGroup = document.querySelector(`#node-g-${draggedNodeId}`);
+        if (nodeGroup) {
+          nodeGroup.setAttribute('transform', `translate(${newX}, ${newY})`);
+        }
+
+        // Real-time update of all connected connector edges!
+        updateConnectedEdges(draggedNodeId);
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (isPanningCanvas) {
+        isPanningCanvas = false;
+        if (treeContainer) treeContainer.classList.remove('panning');
+      }
+
+      if (isDraggingNode) {
+        const nodeGroup = document.querySelector(`#node-g-${draggedNodeId}`);
+        if (nodeGroup) nodeGroup.classList.remove('dragging');
+
+        // If not dragged significantly, treat as Click -> Open Inspector!
+        if (!hasMovedNode && draggedNodeId && currentTreeNodes[draggedNodeId]) {
+          const nodeMeta = currentTreeNodes[draggedNodeId];
+          const evals = (currentScoreData && currentScoreData.tree_path && currentScoreData.tree_path.evaluations) || {};
+          openNodeInspector(draggedNodeId, nodeMeta, evals[draggedNodeId]);
+        }
+
+        isDraggingNode = false;
+        draggedNodeId = null;
+      }
+    });
+
+    // Touch Move & Touch End for Mobile / Tablet
+    window.addEventListener('touchmove', (e) => {
+      if (e.touches && e.touches.length === 1) {
+        const touch = e.touches[0];
+        if (isPanningCanvas) {
+          e.preventDefault();
+          panX = touch.clientX - panStartMouseX;
+          panY = touch.clientY - panStartMouseY;
+          applyCanvasTransform();
+        } else if (isDraggingNode && draggedNodeId && currentTreeNodes[draggedNodeId]) {
+          e.preventDefault();
+          const dx = (touch.clientX - nodeDragStartMouseX) / zoomScale;
+          const dy = (touch.clientY - nodeDragStartMouseY) / zoomScale;
+          if (Math.hypot(dx, dy) > 4) hasMovedNode = true;
+          const newX = Math.round(nodeStartPosX + dx);
+          const newY = Math.round(nodeStartPosY + dy);
+          currentTreeNodes[draggedNodeId].x = newX;
+          currentTreeNodes[draggedNodeId].y = newY;
+          const nodeGroup = document.querySelector(`#node-g-${draggedNodeId}`);
+          if (nodeGroup) nodeGroup.setAttribute('transform', `translate(${newX}, ${newY})`);
+          updateConnectedEdges(draggedNodeId);
+        }
+      }
+    }, { passive: false });
+
+    window.addEventListener('touchend', () => {
+      if (isPanningCanvas) {
+        isPanningCanvas = false;
+        if (treeContainer) treeContainer.classList.remove('panning');
+      }
+      if (isDraggingNode) {
+        const nodeGroup = document.querySelector(`#node-g-${draggedNodeId}`);
+        if (nodeGroup) nodeGroup.classList.remove('dragging');
+        if (!hasMovedNode && draggedNodeId && currentTreeNodes[draggedNodeId]) {
+          const nodeMeta = currentTreeNodes[draggedNodeId];
+          const evals = (currentScoreData && currentScoreData.tree_path && currentScoreData.tree_path.evaluations) || {};
+          openNodeInspector(draggedNodeId, nodeMeta, evals[draggedNodeId]);
+        }
+        isDraggingNode = false;
+        draggedNodeId = null;
+      }
+    });
+  }
+
+  /**
+   * Recalculate and update SVG edge paths connected to a dragged node in real time
+   */
+  function updateConnectedEdges(nodeId) {
+    const nodeH = 88;
+
+    currentTreeEdges.forEach(edge => {
+      if (edge.from !== nodeId && edge.to !== nodeId) return;
+
+      const fromNode = currentTreeNodes[edge.from];
+      const toNode = currentTreeNodes[edge.to];
+      if (!fromNode || !toNode) return;
+
+      const x1 = fromNode.x;
+      const y1 = fromNode.y + nodeH / 2;
+      const x2 = toNode.x;
+      const y2 = toNode.y - nodeH / 2;
+
+      const midY = (y1 + y2) / 2;
+      const pathD = `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
+
+      const pathElem = document.querySelector(`#edge-p-${edge.id}`);
+      if (pathElem) {
+        pathElem.setAttribute('d', pathD);
+      }
+
+      const midX = (x1 + x2) / 2;
+      const lblGroup = document.querySelector(`#edge-lbl-${edge.id}`);
+      if (lblGroup) {
+        const pillW = Math.min(edge.label.length * 6.5 + 16, 170);
+        const pillH = 18;
+
+        const pillBg = lblGroup.querySelector('rect');
+        if (pillBg) {
+          pillBg.setAttribute('x', midX - pillW / 2);
+          pillBg.setAttribute('y', midY - pillH / 2);
+        }
+
+        const lblText = lblGroup.querySelector('text');
+        if (lblText) {
+          lblText.setAttribute('x', midX);
+          lblText.setAttribute('y', midY + 4);
+        }
+      }
+    });
   }
 
   /**
@@ -626,7 +1022,7 @@
   }
 
   /**
-   * Render SVG Tree Base DOM — Excalidraw Spacious Rectangular Card Style
+   * Render SVG Tree Base DOM — Excalidraw Spacious Rectangular Card Style with Pan, Zoom & Drag-and-Drop
    */
   function renderDecisionTreeDOM(treePath) {
     treeContainer.innerHTML = '';
@@ -637,112 +1033,22 @@
     const svgWidth = 1200;
     const svgHeight = 620;
 
-    // Node layout positions (x, y) with generous spacing to prevent any overlap or clipping
-    const NODES = {
-      root: {
-        x: 600, y: 55,
-        title: 'Applicant Ingestion',
-        stepTag: 'STEP 1 • INPUT',
-        cond: 'Parse 5 financial ratios',
-        evalRule: 'DTI, LTI, APR, History, Missed',
-        badge: 'INPUT'
-      },
-      node_clean: {
-        x: 340, y: 195,
-        title: 'Clean Repayment Track',
-        stepTag: 'STEP 2 • CRITERIA',
-        cond: 'Missed Payments == 0',
-        evalRule: '0 missed payments in 12m',
-        badge: 'PASS'
-      },
-      node_delinquent: {
-        x: 870, y: 195,
-        title: 'Delinquency Track',
-        stepTag: 'STEP 2 • WARNING',
-        cond: 'Missed Payments > 0',
-        evalRule: 'Active late payments detected',
-        badge: 'WARNING'
-      },
-      node_low_dti: {
-        x: 200, y: 350,
-        title: 'Low Debt-to-Income',
-        stepTag: 'STEP 3 • CASHFLOW',
-        cond: 'DTI ≤ 36.0%',
-        evalRule: 'Monthly obligations < 36%',
-        badge: 'SAFE'
-      },
-      node_high_dti: {
-        x: 480, y: 350,
-        title: 'Elevated DTI',
-        stepTag: 'STEP 3 • BURDEN',
-        cond: 'DTI > 36.0%',
-        evalRule: 'Testing tenure compensation',
-        badge: 'STRAINED'
-      },
-      node_mild_delinq: {
-        x: 780, y: 350,
-        title: 'Mild Delinquency',
-        stepTag: 'STEP 3 • RECOVERY',
-        cond: 'Missed Payments ≤ 2',
-        evalRule: 'Testing cashflow recovery',
-        badge: 'RECOVERY'
-      },
-      leaf_prime: {
-        x: 150, y: 520,
-        title: 'Prime Tier Approval',
-        stepTag: 'STEP 4 • FINAL VERDICT',
-        cond: 'LTI ≤ 1.50x — Top Tier',
-        evalRule: 'Preferred Rate & Max Sanction',
-        badge: 'PRIME',
-        leaf: true
-      },
-      leaf_standard: {
-        x: 420, y: 520,
-        title: 'Standard Solvency',
-        stepTag: 'STEP 4 • FINAL VERDICT',
-        cond: 'Standard Amortization',
-        evalRule: 'Manageable Risk Profile',
-        badge: 'STANDARD',
-        leaf: true
-      },
-      leaf_strained: {
-        x: 710, y: 520,
-        title: 'Conditional Review',
-        stepTag: 'STEP 4 • FINAL VERDICT',
-        cond: 'Review / Mitigants Needed',
-        evalRule: 'Restructuring / Co-borrower',
-        badge: 'REVIEW',
-        leaf: true
-      },
-      leaf_subprime: {
-        x: 1010, y: 520,
-        title: 'High Default Risk',
-        stepTag: 'STEP 4 • FINAL VERDICT',
-        cond: 'Critical Default Vulnerability',
-        evalRule: 'Unsecured Credit Declined',
-        badge: 'SUBPRIME',
-        leaf: true
-      },
-    };
-
-    const EDGES = [
-      { id: 'e_root_clean', from: 'root', to: 'node_clean', label: 'Clean Track (0 missed)' },
-      { id: 'e_root_delinq', from: 'root', to: 'node_delinquent', label: 'Delinquent (>0 missed)' },
-      { id: 'e_clean_low_dti', from: 'node_clean', to: 'node_low_dti', label: 'DTI ≤ 36% (Safe)' },
-      { id: 'e_clean_high_dti', from: 'node_clean', to: 'node_high_dti', label: 'DTI > 36% (Elevated)' },
-      { id: 'e_delinq_mild', from: 'node_delinquent', to: 'node_mild_delinq', label: 'Missed ≤ 2 (Isolated)' },
-      { id: 'e_delinq_severe', from: 'node_delinquent', to: 'leaf_subprime', label: 'Missed > 2 (Chronic)' },
-      { id: 'e_low_dti_prime', from: 'node_low_dti', to: 'leaf_prime', label: 'LTI ≤ 1.5x (Optimal)' },
-      { id: 'e_low_dti_std', from: 'node_low_dti', to: 'leaf_standard', label: 'LTI > 1.5x (Large Loan)' },
-      { id: 'e_high_dti_std', from: 'node_high_dti', to: 'leaf_standard', label: 'History ≥ 5y (Seasoned)' },
-      { id: 'e_high_dti_strain', from: 'node_high_dti', to: 'leaf_strained', label: 'History < 5y (Short)' },
-      { id: 'e_mild_strain', from: 'node_mild_delinq', to: 'leaf_strained', label: 'DTI ≤ 42% (Buffer)' },
-      { id: 'e_mild_subprime', from: 'node_mild_delinq', to: 'leaf_subprime', label: 'DTI > 42% (Overburdened)' },
-    ];
+    // Initialize or preserve currentTreeNodes positions across runs
+    if (!currentTreeNodes || Object.keys(currentTreeNodes).length === 0) {
+      currentTreeNodes = JSON.parse(JSON.stringify(DEFAULT_NODES));
+    } else {
+      Object.keys(DEFAULT_NODES).forEach(nodeId => {
+        if (!currentTreeNodes[nodeId]) {
+          currentTreeNodes[nodeId] = { ...DEFAULT_NODES[nodeId] };
+        }
+      });
+    }
+    currentTreeEdges = TREE_EDGES;
 
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
     svg.setAttribute('class', 'tree-svg excalidraw-svg');
+    svg.setAttribute('id', 'tree-svg-root');
 
     // Arrow markers for Excalidraw-style edges
     const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
@@ -762,14 +1068,25 @@
     `;
     svg.appendChild(defs);
 
-    // Node Box Dimensions: Generously sized Excalidraw cards
-    const nodeW = 230;
-    const nodeH = 88;
+    // Canvas Viewport Transform Layer (for pan & zoom)
+    const canvasLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    canvasLayer.setAttribute('id', 'tree-canvas-layer');
+    canvasLayer.setAttribute('transform', `translate(${panX}, ${panY}) scale(${zoomScale})`);
+
+    // Layer for connector edges
+    const edgesLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    edgesLayer.setAttribute('id', 'tree-edges-layer');
+    canvasLayer.appendChild(edgesLayer);
+
+    // Layer for node cards
+    const nodesLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    nodesLayer.setAttribute('id', 'tree-nodes-layer');
+    canvasLayer.appendChild(nodesLayer);
 
     // 1. Draw Edges
-    EDGES.forEach(edge => {
-      const fromNode = NODES[edge.from];
-      const toNode = NODES[edge.to];
+    TREE_EDGES.forEach(edge => {
+      const fromNode = currentTreeNodes[edge.from];
+      const toNode = currentTreeNodes[edge.to];
       if (!fromNode || !toNode) return;
 
       const x1 = fromNode.x;
@@ -790,14 +1107,14 @@
       path.setAttribute('data-tip-body', `Branch connecting ${fromNode.title} to ${toNode.title}.`);
       path.setAttribute('data-tip-meta', 'BRANCH CONNECTOR');
 
-      svg.appendChild(path);
+      edgesLayer.appendChild(path);
 
-      // Edge Pill Label (with white pill background to ensure zero clash with lines)
+      // Edge Pill Label (with white pill background)
       const midX = (x1 + x2) / 2;
       const lblGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      lblGroup.setAttribute('id', `edge-lbl-${edge.id}`);
       lblGroup.setAttribute('class', 'edge-label-group');
 
-      const pillPad = 6;
       const pillW = Math.min(edge.label.length * 6.5 + 16, 170);
       const pillH = 18;
 
@@ -821,34 +1138,44 @@
       lblText.textContent = edge.label;
       lblGroup.appendChild(lblText);
 
-      svg.appendChild(lblGroup);
+      edgesLayer.appendChild(lblGroup);
     });
 
-    // 2. Draw Excalidraw Rectangular Nodes with Complete, Unclipped Text
-    Object.entries(NODES).forEach(([nodeId, node]) => {
+    // 2. Draw Excalidraw Rectangular Nodes centered at (0, 0) inside transform translate(x, y)
+    const halfW = nodeW / 2; // 115
+    const halfH = nodeH / 2; // 44
+
+    Object.entries(currentTreeNodes).forEach(([nodeId, node]) => {
       const evalData = evals[nodeId] || {};
 
       const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       g.setAttribute('id', `node-g-${nodeId}`);
       g.setAttribute('class', 'tree-node-group excalidraw-node');
+      g.setAttribute('transform', `translate(${node.x}, ${node.y})`);
 
-      // Click-to-Inspect Event
-      g.addEventListener('click', () => {
-        openNodeInspector(nodeId, node, evalData);
+      // Mouse drag start
+      g.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        startNodeDrag(nodeId, e.clientX, e.clientY);
       });
+
+      // Touch drag start
+      g.addEventListener('touchstart', (e) => {
+        if (e.touches && e.touches.length === 1) {
+          e.stopPropagation();
+          startNodeDrag(nodeId, e.touches[0].clientX, e.touches[0].clientY);
+        }
+      }, { passive: false });
 
       // Hover Tooltip
       g.setAttribute('data-tip-title', evalData.title || node.title);
-      g.setAttribute('data-tip-body', `${evalData.detail || node.cond} (Click to inspect full math)`);
-      g.setAttribute('data-tip-meta', 'CLICK TO INSPECT FULL LOGIC');
-
-      const nodeLeft = node.x - nodeW / 2;
-      const nodeTop = node.y - nodeH / 2;
+      g.setAttribute('data-tip-body', `${evalData.detail || node.cond} (Drag card to reposition • Click to inspect)`);
+      g.setAttribute('data-tip-meta', 'DRAGGABLE NODE');
 
       // Base Rectangular Box (Excalidraw Card Style)
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      rect.setAttribute('x', nodeLeft);
-      rect.setAttribute('y', nodeTop);
+      rect.setAttribute('x', -halfW);
+      rect.setAttribute('y', -halfH);
       rect.setAttribute('width', nodeW);
       rect.setAttribute('height', nodeH);
       rect.setAttribute('class', 'node-box');
@@ -856,8 +1183,8 @@
 
       // Top Row: Step Tag on Left
       const stepTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      stepTxt.setAttribute('x', nodeLeft + 12);
-      stepTxt.setAttribute('y', nodeTop + 18);
+      stepTxt.setAttribute('x', -halfW + 12);
+      stepTxt.setAttribute('y', -halfH + 18);
       stepTxt.setAttribute('class', 'node-step-tag');
       stepTxt.textContent = node.stepTag || `STEP ${evalData.step || 1}`;
       g.appendChild(stepTxt);
@@ -865,8 +1192,8 @@
       // Top Row: Status Badge on Right (Dedicated coordinates: NEVER collides with title!)
       const badgeW = 54;
       const badgeH = 17;
-      const badgeX = nodeLeft + nodeW - badgeW - 10;
-      const badgeY = nodeTop + 8;
+      const badgeX = halfW - badgeW - 10;
+      const badgeY = -halfH + 8;
 
       const badgeRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       badgeRect.setAttribute('x', badgeX);
@@ -886,36 +1213,37 @@
 
       // Middle Row: Bold Title (Given full width 210px! Never truncated!)
       const titleTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      titleTxt.setAttribute('x', nodeLeft + 12);
-      titleTxt.setAttribute('y', nodeTop + 42);
+      titleTxt.setAttribute('x', -halfW + 12);
+      titleTxt.setAttribute('y', -halfH + 42);
       titleTxt.setAttribute('class', 'node-title-text');
       titleTxt.textContent = node.title;
       g.appendChild(titleTxt);
 
       // Lower Row 1: Condition / Rule (Monospace)
       const ruleTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      ruleTxt.setAttribute('x', nodeLeft + 12);
-      ruleTxt.setAttribute('y', nodeTop + 60);
+      ruleTxt.setAttribute('x', -halfW + 12);
+      ruleTxt.setAttribute('y', -halfH + 60);
       ruleTxt.setAttribute('class', 'node-condition-text');
       ruleTxt.textContent = node.cond;
       g.appendChild(ruleTxt);
 
       // Lower Row 2: Evaluation Detail
       const detailTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      detailTxt.setAttribute('x', nodeLeft + 12);
-      detailTxt.setAttribute('y', nodeTop + 76);
+      detailTxt.setAttribute('x', -halfW + 12);
+      detailTxt.setAttribute('y', -halfH + 76);
       detailTxt.setAttribute('class', 'node-eval-detail-text');
       detailTxt.textContent = node.evalRule || evalData.formula || 'Rule evaluated';
       g.appendChild(detailTxt);
 
-      svg.appendChild(g);
+      nodesLayer.appendChild(g);
     });
 
+    svg.appendChild(canvasLayer);
     treeContainer.appendChild(svg);
 
     // 3. Render Breadcrumbs in Path Summary Bar with Full Process Text
     treePath.path_nodes.forEach((nodeId, idx) => {
-      const node = NODES[nodeId];
+      const node = currentTreeNodes[nodeId] || DEFAULT_NODES[nodeId];
       if (!node) return;
       const chip = document.createElement('span');
       chip.id = `chip-step-${nodeId}`;
