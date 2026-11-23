@@ -851,17 +851,132 @@ body {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
-/* Blueprint Canvas Container */
+/* Theme Toggles & Style Selector */
+.theme-toggle-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-subtle);
+  padding: 2px 4px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-line);
+}
+
+.theme-btn {
+  background: none;
+  border: none;
+  padding: 3px 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ink-500);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.theme-btn:hover {
+  color: var(--ink-900);
+}
+
+.theme-btn.active {
+  background: #ffffff;
+  color: var(--ink-900);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+/* 3 Canvas Themes (Excalidraw, Blueprint, Minimal) */
 .blueprint-canvas {
-  background-color: #fafcff;
-  /* Blueprint Grid Pattern */
-  background-image: 
-    linear-gradient(to right, rgba(226, 232, 240, 0.65) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(226, 232, 240, 0.65) 1px, transparent 1px);
-  background-size: 24px 24px;
-  min-height: 520px;
+  background-color: #ffffff;
+  min-height: 540px;
   padding: 20px;
   position: relative;
+  transition: background 0.3s ease;
+}
+
+/* Theme 1: Excalidraw Whiteboard (Default) */
+.blueprint-canvas.theme-excalidraw {
+  background-color: #ffffff;
+  background-image: radial-gradient(#cbd5e1 1.2px, transparent 1.2px);
+  background-size: 20px 20px;
+}
+
+/* Theme 2: Blueprint Tech Grid */
+.blueprint-canvas.theme-blueprint {
+  background-color: #fafcff;
+  background-image: 
+    linear-gradient(to right, rgba(203, 213, 225, 0.6) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(203, 213, 225, 0.6) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Theme 3: Minimal Pure White */
+.blueprint-canvas.theme-minimal {
+  background-color: #f8fafc;
+  background-image: none;
+}
+
+/* Process Narrative Card (Full Unabbreviated Decision Trail) */
+.process-narrative-card {
+  margin-top: 12px;
+  background: #ffffff;
+  border: 1px solid var(--border-line);
+  border-left: 4px solid var(--emerald);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.narrative-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--ink-900);
+  margin-bottom: 6px;
+}
+
+.narrative-icon {
+  font-size: 13px;
+}
+
+.narrative-text {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink-700);
+}
+
+.narrative-highlight {
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.narrative-tag {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-line);
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-900);
+}
+
+.narrative-tag.prime {
+  background: var(--pastel-emerald);
+  border-color: #a7f3d0;
+  color: #065f46;
+}
+
+.narrative-tag.warning {
+  background: var(--pastel-cream);
+  border-color: #fde68a;
+  color: #92400e;
+}
+
+.narrative-tag.risk {
+  background: var(--pastel-rose);
+  border-color: #fecdd3;
+  color: #9f1239;
 }
 
 .view-panel {
@@ -888,11 +1003,17 @@ body {
   height: auto;
 }
 
-/* Edge & Laser Styling */
+/* Excalidraw-Style Rectangular Nodes & Edge Elements */
+.excalidraw-svg {
+  width: 100%;
+  max-width: 1200px;
+  height: auto;
+}
+
 .tree-edge {
   fill: none;
   stroke: #cbd5e1;
-  stroke-width: 1.5;
+  stroke-width: 2;
   stroke-dasharray: 4 3;
   transition: stroke 0.4s ease, stroke-width 0.4s ease;
 }
@@ -911,32 +1032,29 @@ body {
   animation: dash-flow 0.8s linear infinite;
 }
 
-@keyframes dash-flow {
-  from { stroke-dashoffset: 20; }
-  to { stroke-dashoffset: 0; }
+.edge-label-pill {
+  fill: #ffffff;
+  stroke: #e2e8f0;
+  stroke-width: 1;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.05));
 }
 
-.laser-particle {
-  fill: #0ea5e9;
-  filter: drop-shadow(0 0 4px #38bdf8);
-}
-
-/* Decision Tree Nodes */
 .tree-node-group {
   cursor: pointer;
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .tree-node-group:hover {
-  transform: translateY(-2px) scale(1.02);
+  transform: translateY(-2px) scale(1.015);
 }
 
+/* Excalidraw Rectangular Card Box */
 .node-box {
   fill: #ffffff;
   stroke: #cbd5e1;
-  stroke-width: 1.5;
+  stroke-width: 2;
   rx: 8;
-  filter: drop-shadow(0 2px 4px rgba(15, 23, 42, 0.05));
+  filter: drop-shadow(0 2px 5px rgba(15, 23, 42, 0.06));
   transition: stroke 0.3s ease, stroke-width 0.3s ease, filter 0.3s ease, fill 0.3s ease;
 }
 
@@ -945,7 +1063,7 @@ body {
   stroke: #0ea5e9;
   stroke-width: 2.5;
   fill: #f0f9ff;
-  filter: drop-shadow(0 0 10px rgba(14, 165, 233, 0.5));
+  filter: drop-shadow(0 0 12px rgba(14, 165, 233, 0.5));
   animation: node-pulse-glow 0.8s ease-in-out infinite alternate;
 }
 
@@ -954,40 +1072,60 @@ body {
   to { filter: drop-shadow(0 0 14px rgba(14, 165, 233, 0.7)); }
 }
 
-/* Active Resolved State */
+/* Active Resolved States (Excalidraw Card Fills) */
 .tree-node-group.active.resolved .node-box {
   stroke: var(--emerald);
   stroke-width: 2.5;
-  fill: #ffffff;
+  fill: #f0fdf4;
   filter: drop-shadow(0 0 10px var(--emerald-glow));
 }
 
 .tree-node-group.active.resolved.warning .node-box {
   stroke: var(--amber);
+  stroke-width: 2.5;
+  fill: #fffbeb;
   filter: drop-shadow(0 0 10px var(--amber-glow));
 }
 
 .tree-node-group.active.resolved.risk .node-box {
   stroke: var(--crimson);
+  stroke-width: 2.5;
+  fill: #fef2f2;
   filter: drop-shadow(0 0 10px var(--crimson-glow));
 }
 
-.node-title-text {
-  font-size: 11px;
+.node-step-tag {
+  font-size: 8.5px;
   font-weight: 700;
-  fill: var(--ink-900);
-  font-family: 'Plus Jakarta Sans', sans-serif;
-}
-
-.node-condition-text {
-  font-size: 9.5px;
-  fill: var(--ink-500);
+  fill: #64748b;
+  letter-spacing: 0.06em;
   font-family: 'JetBrains Mono', monospace;
 }
 
+.node-title-text {
+  font-size: 13.5px;
+  font-weight: 700;
+  fill: var(--ink-900);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: -0.01em;
+}
+
+.node-condition-text {
+  font-size: 11px;
+  font-weight: 600;
+  fill: #334155;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.node-eval-detail-text {
+  font-size: 10px;
+  fill: #64748b;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
 .node-badge-rect {
-  rx: 3;
-  fill: #f1f5f9;
+  rx: 4;
+  fill: #e2e8f0;
   transition: fill 0.3s ease;
 }
 
@@ -1008,7 +1146,7 @@ body {
 }
 
 .node-badge-text {
-  font-size: 8.5px;
+  font-size: 9px;
   font-weight: 700;
   fill: #475569;
   font-family: 'JetBrains Mono', monospace;

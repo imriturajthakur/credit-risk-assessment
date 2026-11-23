@@ -124,6 +124,11 @@
   const modelsCardsRow = document.querySelector('#models-cards-row');
   const benchmarkTbody = document.querySelector('#benchmark-tbody');
 
+  // Narrative Text
+  const narrativeText = document.querySelector('#narrative-text');
+  const blueprintCanvas = document.querySelector('.blueprint-canvas');
+  const themeBtns = document.querySelectorAll('.theme-btn');
+
   /**
    * Application Initialization
    */
@@ -133,8 +138,14 @@
     setupViewSwitching();
     setupPresetButtons();
     setupSimulationControls();
+    setupThemeToggles();
     setupAlgoToggles();
     setupFormSubmission();
+
+    // Default canvas theme: Excalidraw Whiteboard
+    if (blueprintCanvas) {
+      blueprintCanvas.classList.add('theme-excalidraw');
+    }
 
     // Fetch baseline models
     try {
@@ -149,6 +160,24 @@
 
     // Auto-run initial prime assessment on load
     await executeAssessment();
+  }
+
+  /**
+   * Theme Toggles (Excalidraw, Blueprint, Minimal)
+   */
+  function setupThemeToggles() {
+    themeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        themeBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const theme = btn.getAttribute('data-theme') || 'excalidraw';
+
+        if (blueprintCanvas) {
+          blueprintCanvas.classList.remove('theme-excalidraw', 'theme-blueprint', 'theme-minimal');
+          blueprintCanvas.classList.add(`theme-${theme}`);
+        }
+      });
+    });
   }
 
   /**
@@ -525,6 +554,15 @@
         const edgeElem = document.querySelector(`#edge-p-${edgeId}`);
         if (edgeElem) {
           edgeElem.classList.add('active', 'animating');
+          const isWarn = evalData.status === 'WARNING' || evalData.status === 'REVIEW';
+          const isRisk = evalData.status === 'HIGH RISK';
+          if (isRisk) {
+            edgeElem.setAttribute('marker-end', 'url(#arrow-risk)');
+          } else if (isWarn) {
+            edgeElem.setAttribute('marker-end', 'url(#arrow-warning)');
+          } else {
+            edgeElem.setAttribute('marker-end', 'url(#arrow-active)');
+          }
         }
         await wait(Math.round(delayMs * 0.65));
       }
@@ -539,11 +577,56 @@
     topAgreement.textContent = consensus.agreement ? consensus.agreement.split(' ')[0] : '4 / 4';
     topVerdict.textContent = consensus.band;
 
+    // Render Full Process Narrative Trail
+    renderNarrativeTrail(data);
+
     isAnimating = false;
   }
 
   /**
-   * Render SVG Tree Base DOM
+   * Render Full Unabbreviated Decision Process Narrative
+   */
+  function renderNarrativeTrail(data) {
+    if (!narrativeText || !data) return;
+    const { inputs, consensus, tree_path } = data;
+    const evals = tree_path.evaluations || {};
+    const dtiPct = ((inputs.monthly_debt_payments / inputs.monthly_income) * 100).toFixed(1);
+    const ltiVal = (inputs.loan_amount / (inputs.monthly_income * 12)).toFixed(2);
+    const missed = parseInt(inputs.missed_payments_12m, 10);
+
+    let statusTag = 'prime';
+    if (consensus.risk_score >= 65) statusTag = 'risk';
+    else if (consensus.risk_score >= 30) statusTag = 'warning';
+
+    let stepsHtml = '';
+    (tree_path.path_nodes || []).forEach((nodeId, idx) => {
+      const ev = evals[nodeId];
+      if (!ev) return;
+      stepsHtml += `
+        <div style="margin-top: 6px;">
+          <strong>Step ${idx + 1}: ${ev.title}</strong> — ${ev.detail}
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #475569; margin-top: 2px;">
+            ↳ Formula Evaluated: <span style="color: #0f172a; font-weight: 600;">${ev.formula || ev.condition}</span>
+          </div>
+        </div>
+      `;
+    });
+
+    narrativeText.innerHTML = `
+      <div style="margin-bottom: 8px;">
+        <strong>Applicant Intake Summary:</strong> Gross Salary of <strong>${inrFormatter.format(inputs.monthly_income)}</strong> with <strong>${inrFormatter.format(inputs.monthly_debt_payments)}</strong> existing monthly debt (<span class="narrative-tag">DTI: ${dtiPct}%</span>), requested loan of <strong>${inrFormatter.format(inputs.loan_amount)}</strong> (<span class="narrative-tag">LTI: ${ltiVal}x</span>), interest rate <strong>${inputs.annual_interest_rate}% APR</strong>, <strong>${inputs.credit_history_years} years</strong> history tenure, and <strong>${missed} missed payments</strong>.
+      </div>
+      <div style="border-left: 2px solid #cbd5e1; padding-left: 10px; margin-bottom: 8px;">
+        ${stepsHtml}
+      </div>
+      <div style="margin-top: 8px; font-weight: 500;">
+        <strong>Final Underwriting Verdict:</strong> Classified as <span class="narrative-tag ${statusTag}">${consensus.band.toUpperCase()}</span> with a calculated default risk score of <span class="narrative-highlight">${consensus.risk_score}/100 (${consensus.probability}% probability)</span>. Consensus supported by <span class="narrative-highlight">${consensus.agreement || '4/4 models'}</span>. Maximum recommended indicative capital sanction is <span class="narrative-highlight">${inrFormatter.format(consensus.sanction_high)}</span> with an estimated monthly cashflow surplus of <span class="narrative-highlight">${inrFormatter.format(consensus.disposable_income)}</span>.
+      </div>
+    `;
+  }
+
+  /**
+   * Render SVG Tree Base DOM — Excalidraw Spacious Rectangular Card Style
    */
   function renderDecisionTreeDOM(treePath) {
     treeContainer.innerHTML = '';
@@ -551,40 +634,137 @@
     if (!treePath) return;
 
     const evals = treePath.evaluations || {};
-    const svgWidth = 920;
-    const svgHeight = 440;
+    const svgWidth = 1200;
+    const svgHeight = 620;
 
+    // Node layout positions (x, y) with generous spacing to prevent any overlap or clipping
     const NODES = {
-      root: { x: 460, y: 35, title: 'Root: Ingestion', cond: 'Ingest financial metrics', badge: 'INPUT' },
-      node_clean: { x: 230, y: 135, title: 'Clean Repayment Track', cond: 'Missed Payments == 0', badge: 'PASS' },
-      node_delinquent: { x: 690, y: 135, title: 'Delinquency Track', cond: 'Missed Payments > 0', badge: 'RISK' },
-      node_low_dti: { x: 120, y: 245, title: 'Low Debt-to-Income', cond: 'DTI ≤ 36.0%', badge: 'SAFE' },
-      node_high_dti: { x: 340, y: 245, title: 'Elevated DTI', cond: 'DTI > 36.0%', badge: 'STRAINED' },
-      node_mild_delinq: { x: 580, y: 245, title: 'Mild Delinquency', cond: 'Missed Payments ≤ 2', badge: 'RECOVER' },
-      leaf_prime: { x: 60, y: 360, title: 'Prime Approval', cond: 'LTI ≤ 1.50x — Top Tier', badge: 'PRIME', leaf: true },
-      leaf_standard: { x: 230, y: 360, title: 'Standard Solvency', cond: 'Standard Lending Tier', badge: 'STANDARD', leaf: true },
-      leaf_strained: { x: 440, y: 360, title: 'Conditional Review', cond: 'High Debt / Delinquency', badge: 'REVIEW', leaf: true },
-      leaf_subprime: { x: 740, y: 360, title: 'High Default Risk', cond: 'Critical Default Signal', badge: 'SUBPRIME', leaf: true },
+      root: {
+        x: 600, y: 55,
+        title: 'Applicant Ingestion',
+        stepTag: 'STEP 1 • INPUT',
+        cond: 'Parse 5 financial ratios',
+        evalRule: 'DTI, LTI, APR, History, Missed',
+        badge: 'INPUT'
+      },
+      node_clean: {
+        x: 340, y: 195,
+        title: 'Clean Repayment Track',
+        stepTag: 'STEP 2 • CRITERIA',
+        cond: 'Missed Payments == 0',
+        evalRule: '0 missed payments in 12m',
+        badge: 'PASS'
+      },
+      node_delinquent: {
+        x: 870, y: 195,
+        title: 'Delinquency Track',
+        stepTag: 'STEP 2 • WARNING',
+        cond: 'Missed Payments > 0',
+        evalRule: 'Active late payments detected',
+        badge: 'WARNING'
+      },
+      node_low_dti: {
+        x: 200, y: 350,
+        title: 'Low Debt-to-Income',
+        stepTag: 'STEP 3 • CASHFLOW',
+        cond: 'DTI ≤ 36.0%',
+        evalRule: 'Monthly obligations < 36%',
+        badge: 'SAFE'
+      },
+      node_high_dti: {
+        x: 480, y: 350,
+        title: 'Elevated DTI',
+        stepTag: 'STEP 3 • BURDEN',
+        cond: 'DTI > 36.0%',
+        evalRule: 'Testing tenure compensation',
+        badge: 'STRAINED'
+      },
+      node_mild_delinq: {
+        x: 780, y: 350,
+        title: 'Mild Delinquency',
+        stepTag: 'STEP 3 • RECOVERY',
+        cond: 'Missed Payments ≤ 2',
+        evalRule: 'Testing cashflow recovery',
+        badge: 'RECOVERY'
+      },
+      leaf_prime: {
+        x: 150, y: 520,
+        title: 'Prime Tier Approval',
+        stepTag: 'STEP 4 • FINAL VERDICT',
+        cond: 'LTI ≤ 1.50x — Top Tier',
+        evalRule: 'Preferred Rate & Max Sanction',
+        badge: 'PRIME',
+        leaf: true
+      },
+      leaf_standard: {
+        x: 420, y: 520,
+        title: 'Standard Solvency',
+        stepTag: 'STEP 4 • FINAL VERDICT',
+        cond: 'Standard Amortization',
+        evalRule: 'Manageable Risk Profile',
+        badge: 'STANDARD',
+        leaf: true
+      },
+      leaf_strained: {
+        x: 710, y: 520,
+        title: 'Conditional Review',
+        stepTag: 'STEP 4 • FINAL VERDICT',
+        cond: 'Review / Mitigants Needed',
+        evalRule: 'Restructuring / Co-borrower',
+        badge: 'REVIEW',
+        leaf: true
+      },
+      leaf_subprime: {
+        x: 1010, y: 520,
+        title: 'High Default Risk',
+        stepTag: 'STEP 4 • FINAL VERDICT',
+        cond: 'Critical Default Vulnerability',
+        evalRule: 'Unsecured Credit Declined',
+        badge: 'SUBPRIME',
+        leaf: true
+      },
     };
 
     const EDGES = [
-      { id: 'e_root_clean', from: 'root', to: 'node_clean', label: 'Clean (0)' },
-      { id: 'e_root_delinq', from: 'root', to: 'node_delinquent', label: 'Missed (>0)' },
-      { id: 'e_clean_low_dti', from: 'node_clean', to: 'node_low_dti', label: 'DTI ≤ 36%' },
-      { id: 'e_clean_high_dti', from: 'node_clean', to: 'node_high_dti', label: 'DTI > 36%' },
-      { id: 'e_delinq_mild', from: 'node_delinquent', to: 'node_mild_delinq', label: 'Missed ≤ 2' },
-      { id: 'e_delinq_severe', from: 'node_delinquent', to: 'leaf_subprime', label: 'Missed > 2' },
-      { id: 'e_low_dti_prime', from: 'node_low_dti', to: 'leaf_prime', label: 'LTI ≤ 1.5x' },
-      { id: 'e_low_dti_std', from: 'node_low_dti', to: 'leaf_standard', label: 'LTI > 1.5x' },
-      { id: 'e_high_dti_std', from: 'node_high_dti', to: 'leaf_standard', label: 'History ≥ 5y' },
-      { id: 'e_high_dti_strain', from: 'node_high_dti', to: 'leaf_strained', label: 'History < 5y' },
-      { id: 'e_mild_strain', from: 'node_mild_delinq', to: 'leaf_strained', label: 'DTI ≤ 42%' },
-      { id: 'e_mild_subprime', from: 'node_mild_delinq', to: 'leaf_subprime', label: 'DTI > 42%' },
+      { id: 'e_root_clean', from: 'root', to: 'node_clean', label: 'Clean Track (0 missed)' },
+      { id: 'e_root_delinq', from: 'root', to: 'node_delinquent', label: 'Delinquent (>0 missed)' },
+      { id: 'e_clean_low_dti', from: 'node_clean', to: 'node_low_dti', label: 'DTI ≤ 36% (Safe)' },
+      { id: 'e_clean_high_dti', from: 'node_clean', to: 'node_high_dti', label: 'DTI > 36% (Elevated)' },
+      { id: 'e_delinq_mild', from: 'node_delinquent', to: 'node_mild_delinq', label: 'Missed ≤ 2 (Isolated)' },
+      { id: 'e_delinq_severe', from: 'node_delinquent', to: 'leaf_subprime', label: 'Missed > 2 (Chronic)' },
+      { id: 'e_low_dti_prime', from: 'node_low_dti', to: 'leaf_prime', label: 'LTI ≤ 1.5x (Optimal)' },
+      { id: 'e_low_dti_std', from: 'node_low_dti', to: 'leaf_standard', label: 'LTI > 1.5x (Large Loan)' },
+      { id: 'e_high_dti_std', from: 'node_high_dti', to: 'leaf_standard', label: 'History ≥ 5y (Seasoned)' },
+      { id: 'e_high_dti_strain', from: 'node_high_dti', to: 'leaf_strained', label: 'History < 5y (Short)' },
+      { id: 'e_mild_strain', from: 'node_mild_delinq', to: 'leaf_strained', label: 'DTI ≤ 42% (Buffer)' },
+      { id: 'e_mild_subprime', from: 'node_mild_delinq', to: 'leaf_subprime', label: 'DTI > 42% (Overburdened)' },
     ];
 
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
-    svg.setAttribute('class', 'tree-svg');
+    svg.setAttribute('class', 'tree-svg excalidraw-svg');
+
+    // Arrow markers for Excalidraw-style edges
+    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    defs.innerHTML = `
+      <marker id="arrow-default" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#94a3b8" />
+      </marker>
+      <marker id="arrow-active" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#059669" />
+      </marker>
+      <marker id="arrow-warning" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#d97706" />
+      </marker>
+      <marker id="arrow-risk" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#dc2626" />
+      </marker>
+    `;
+    svg.appendChild(defs);
+
+    // Node Box Dimensions: Generously sized Excalidraw cards
+    const nodeW = 230;
+    const nodeH = 88;
 
     // 1. Draw Edges
     EDGES.forEach(edge => {
@@ -593,9 +773,9 @@
       if (!fromNode || !toNode) return;
 
       const x1 = fromNode.x;
-      const y1 = fromNode.y + 24;
+      const y1 = fromNode.y + nodeH / 2;
       const x2 = toNode.x;
-      const y2 = toNode.y - 24;
+      const y2 = toNode.y - nodeH / 2;
 
       const midY = (y1 + y2) / 2;
       const pathD = `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
@@ -604,6 +784,7 @@
       path.setAttribute('id', `edge-p-${edge.id}`);
       path.setAttribute('d', pathD);
       path.setAttribute('class', 'tree-edge');
+      path.setAttribute('marker-end', 'url(#arrow-default)');
 
       path.setAttribute('data-tip-title', `Condition: ${edge.label}`);
       path.setAttribute('data-tip-body', `Branch connecting ${fromNode.title} to ${toNode.title}.`);
@@ -611,30 +792,45 @@
 
       svg.appendChild(path);
 
-      // Edge label
+      // Edge Pill Label (with white pill background to ensure zero clash with lines)
       const midX = (x1 + x2) / 2;
+      const lblGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      lblGroup.setAttribute('class', 'edge-label-group');
+
+      const pillPad = 6;
+      const pillW = Math.min(edge.label.length * 6.5 + 16, 170);
+      const pillH = 18;
+
+      const pillBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      pillBg.setAttribute('x', midX - pillW / 2);
+      pillBg.setAttribute('y', midY - pillH / 2);
+      pillBg.setAttribute('width', pillW);
+      pillBg.setAttribute('height', pillH);
+      pillBg.setAttribute('rx', '4');
+      pillBg.setAttribute('class', 'edge-label-pill');
+      lblGroup.appendChild(pillBg);
+
       const lblText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       lblText.setAttribute('x', midX);
-      lblText.setAttribute('y', midY - 4);
+      lblText.setAttribute('y', midY + 4);
       lblText.setAttribute('text-anchor', 'middle');
-      lblText.setAttribute('font-size', '8.5');
+      lblText.setAttribute('font-size', '9');
       lblText.setAttribute('font-family', 'JetBrains Mono');
-      lblText.setAttribute('fill', '#94a3b8');
+      lblText.setAttribute('fill', '#475569');
       lblText.setAttribute('font-weight', '600');
       lblText.textContent = edge.label;
-      svg.appendChild(lblText);
+      lblGroup.appendChild(lblText);
+
+      svg.appendChild(lblGroup);
     });
 
-    // 2. Draw Nodes
-    const nodeW = 146;
-    const nodeH = 46;
-
+    // 2. Draw Excalidraw Rectangular Nodes with Complete, Unclipped Text
     Object.entries(NODES).forEach(([nodeId, node]) => {
       const evalData = evals[nodeId] || {};
 
       const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       g.setAttribute('id', `node-g-${nodeId}`);
-      g.setAttribute('class', 'tree-node-group');
+      g.setAttribute('class', 'tree-node-group excalidraw-node');
 
       // Click-to-Inspect Event
       g.addEventListener('click', () => {
@@ -643,60 +839,81 @@
 
       // Hover Tooltip
       g.setAttribute('data-tip-title', evalData.title || node.title);
-      g.setAttribute('data-tip-body', `${evalData.detail || node.cond} (Click to inspect formula)`);
-      g.setAttribute('data-tip-meta', 'CLICK TO INSPECT NODE LOGIC');
+      g.setAttribute('data-tip-body', `${evalData.detail || node.cond} (Click to inspect full math)`);
+      g.setAttribute('data-tip-meta', 'CLICK TO INSPECT FULL LOGIC');
 
-      // Rect
+      const nodeLeft = node.x - nodeW / 2;
+      const nodeTop = node.y - nodeH / 2;
+
+      // Base Rectangular Box (Excalidraw Card Style)
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      rect.setAttribute('x', node.x - nodeW / 2);
-      rect.setAttribute('y', node.y - nodeH / 2);
+      rect.setAttribute('x', nodeLeft);
+      rect.setAttribute('y', nodeTop);
       rect.setAttribute('width', nodeW);
       rect.setAttribute('height', nodeH);
       rect.setAttribute('class', 'node-box');
       g.appendChild(rect);
 
-      // Badge rect
-      const badgeW = 44;
-      const badgeH = 14;
+      // Top Row: Step Tag on Left
+      const stepTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      stepTxt.setAttribute('x', nodeLeft + 12);
+      stepTxt.setAttribute('y', nodeTop + 18);
+      stepTxt.setAttribute('class', 'node-step-tag');
+      stepTxt.textContent = node.stepTag || `STEP ${evalData.step || 1}`;
+      g.appendChild(stepTxt);
+
+      // Top Row: Status Badge on Right (Dedicated coordinates: NEVER collides with title!)
+      const badgeW = 54;
+      const badgeH = 17;
+      const badgeX = nodeLeft + nodeW - badgeW - 10;
+      const badgeY = nodeTop + 8;
+
       const badgeRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      badgeRect.setAttribute('x', node.x + nodeW / 2 - badgeW - 6);
-      badgeRect.setAttribute('y', node.y - nodeH / 2 + 5);
+      badgeRect.setAttribute('x', badgeX);
+      badgeRect.setAttribute('y', badgeY);
       badgeRect.setAttribute('width', badgeW);
       badgeRect.setAttribute('height', badgeH);
       badgeRect.setAttribute('class', 'node-badge-rect');
       g.appendChild(badgeRect);
 
-      // Badge text
       const badgeTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      badgeTxt.setAttribute('x', node.x + nodeW / 2 - badgeW / 2 - 6);
-      badgeTxt.setAttribute('y', node.y - nodeH / 2 + 15);
+      badgeTxt.setAttribute('x', badgeX + badgeW / 2);
+      badgeTxt.setAttribute('y', badgeY + 12);
       badgeTxt.setAttribute('text-anchor', 'middle');
       badgeTxt.setAttribute('class', 'node-badge-text');
       badgeTxt.textContent = evalData.status || node.badge;
       g.appendChild(badgeTxt);
 
-      // Title
+      // Middle Row: Bold Title (Given full width 210px! Never truncated!)
       const titleTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      titleTxt.setAttribute('x', node.x - nodeW / 2 + 8);
-      titleTxt.setAttribute('y', node.y - nodeH / 2 + 16);
+      titleTxt.setAttribute('x', nodeLeft + 12);
+      titleTxt.setAttribute('y', nodeTop + 42);
       titleTxt.setAttribute('class', 'node-title-text');
-      titleTxt.textContent = node.title.length > 17 ? node.title.substring(0, 16) + '…' : node.title;
+      titleTxt.textContent = node.title;
       g.appendChild(titleTxt);
 
-      // Condition
-      const condTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      condTxt.setAttribute('x', node.x - nodeW / 2 + 8);
-      condTxt.setAttribute('y', node.y + nodeH / 2 - 10);
-      condTxt.setAttribute('class', 'node-condition-text');
-      condTxt.textContent = node.cond.length > 21 ? node.cond.substring(0, 20) + '…' : node.cond;
-      g.appendChild(condTxt);
+      // Lower Row 1: Condition / Rule (Monospace)
+      const ruleTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      ruleTxt.setAttribute('x', nodeLeft + 12);
+      ruleTxt.setAttribute('y', nodeTop + 60);
+      ruleTxt.setAttribute('class', 'node-condition-text');
+      ruleTxt.textContent = node.cond;
+      g.appendChild(ruleTxt);
+
+      // Lower Row 2: Evaluation Detail
+      const detailTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      detailTxt.setAttribute('x', nodeLeft + 12);
+      detailTxt.setAttribute('y', nodeTop + 76);
+      detailTxt.setAttribute('class', 'node-eval-detail-text');
+      detailTxt.textContent = node.evalRule || evalData.formula || 'Rule evaluated';
+      g.appendChild(detailTxt);
 
       svg.appendChild(g);
     });
 
     treeContainer.appendChild(svg);
 
-    // 3. Render Breadcrumbs
+    // 3. Render Breadcrumbs in Path Summary Bar with Full Process Text
     treePath.path_nodes.forEach((nodeId, idx) => {
       const node = NODES[nodeId];
       if (!node) return;
@@ -705,8 +922,8 @@
       chip.className = 'step-chip';
       chip.textContent = node.title;
       chip.setAttribute('data-tip-title', node.title);
-      chip.setAttribute('data-tip-body', 'Click to inspect this evaluation step');
-      chip.setAttribute('data-tip-meta', `Step ${idx + 1}`);
+      chip.setAttribute('data-tip-body', evals[nodeId] ? evals[nodeId].detail : node.cond);
+      chip.setAttribute('data-tip-meta', `Step ${idx + 1} of Flow`);
 
       chip.addEventListener('click', () => {
         openNodeInspector(nodeId, node, evals[nodeId]);

@@ -263,6 +263,14 @@
             <button type="button" class="sim-ctrl-btn" id="replay-flow-btn" title="Replay Flow Animation">
               <span>↺</span> Replay Animation
             </button>
+
+            <!-- 3 Visual Style Presets (Excalidraw, Blueprint, Minimal) -->
+            <div class="theme-toggle-group">
+              <span class="speed-lbl">Style:</span>
+              <button type="button" class="theme-btn active" data-theme="excalidraw" title="Excalidraw Whiteboard Style with Spacious Rectangular Cards">Excalidraw</button>
+              <button type="button" class="theme-btn" data-theme="blueprint" title="Blueprint Tech Grid Canvas">Blueprint</button>
+              <button type="button" class="theme-btn" data-theme="minimal" title="Clean Minimalist Whiteboard">Minimal</button>
+            </div>
             
             <div class="speed-toggle-group">
               <span class="speed-lbl">Speed:</span>
@@ -289,6 +297,17 @@
               <span class="path-title">DECISION SEQUENCE:</span>
               <div class="path-steps" id="path-steps-list">
                 <!-- Dynamically populated breadcrumb chips -->
+              </div>
+            </div>
+
+            <!-- Full Process Narrative Trail (Tells the Complete Story) -->
+            <div class="process-narrative-card" id="process-narrative-card">
+              <div class="narrative-head">
+                <span class="narrative-icon">📖</span>
+                <strong>Full Underwriting Process Narrative:</strong>
+              </div>
+              <div class="narrative-text" id="narrative-text">
+                Waiting for assessment to run…
               </div>
             </div>
           </div>
